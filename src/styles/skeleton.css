@@ -1,0 +1,32 @@
+/* ==========================================================================
+   ShopMe Skeleton Loader Styles
+   ========================================================================== */
+
+.skeleton-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface-subtle, #f1f5f9) 25%,
+    var(--border-subtle, #e2e8f0) 50%,
+    var(--bg-surface-subtle, #f1f5f9) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+[data-theme="dark"] .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    #1e293b 25%,
+    #334155 50%,
+    #1e293b 75%
+  );
+  background-size: 200% 100%;
+}
+
+[data-theme="dark"] .skeleton-pulse {
+  background-color: #1e293b !important;
+}

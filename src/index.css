@@ -1,0 +1,10 @@
+/**
+ * ShopMe Merchant Global CSS Entry
+ * Imports design tokens, animations, skeleton loaders, and component styles.
+ */
+
+@import './styles/variables.css';
+@import './styles/animations.css';
+@import './styles/skeleton.css';
+@import './styles/mobile.css';
+@import './styles/components.css';

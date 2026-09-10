@@ -1,0 +1,394 @@
+/* ==========================================================================
+   ShopMe Merchant Layout & Responsive App Shell
+   Hinglish Hint: Yeh CSS pure app ko Mobile, Tablet, aur Laptop/Desktop par
+   ekdum natural feel karati hai:
+   - Mobile: 100% fullscreen touch counter app with bottom tabs
+   - Tablet: Expansive 860px+ container with multi-col metrics and split POS
+   - Laptop/Desktop: Full-width modern ERP/POS workspace with top navbar
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-family-body);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile App Container (Centered on mobile preview, full width on wider screens) */
+.app-container {
+  width: 100%;
+  max-width: var(--max-mobile-width);
+  min-height: 100vh;
+  margin: 0 auto;
+  background-color: var(--bg-app);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.08);
+}
+
+/* Header (Top Navigation for Mobile / Tablet) */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: var(--top-header-height);
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.app-header .header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.app-header .header-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.app-header .header-subtitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+/* Main Content Area */
+.app-content {
+  flex: 1;
+  padding: var(--space-md);
+  padding-bottom: calc(var(--bottom-nav-height) + var(--space-lg));
+  overflow-y: auto;
+}
+
+/* Fullscreen views without bottom nav padding (e.g. Auth) */
+.app-content.no-bottom-nav {
+  padding-bottom: var(--space-md);
+}
+
+/* Bottom Navigation Bar (Mobile / Tablet Tabs) */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: var(--max-mobile-width);
+  margin: 0 auto;
+  height: var(--bottom-nav-height);
+  background-color: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 50;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.72rem;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.bottom-nav-item:hover,
+.bottom-nav-item.active {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.bottom-nav-item.active svg {
+  stroke-width: 2.5px;
+  transform: translateY(-1px);
+}
+
+/* Badge count indicator on bottom tab */
+.nav-badge {
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  background-color: var(--color-danger);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: bold;
+  padding: 1px 5px;
+  border-radius: var(--radius-full);
+}
+
+/* ==========================================================================
+   Desktop Top Navbar (Hidden by default on mobile)
+   ========================================================================== */
+.desktop-navbar {
+  display: none;
+}
+
+/* ==========================================================================
+   Responsive Grid & Screen Layout Utilities
+   ========================================================================== */
+/* POS Screen Layout */
+.pos-screen-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pos-catalog-panel {
+  flex: 1;
+}
+
+.pos-cart-panel {
+  width: 100%;
+}
+
+.pos-products-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+/* Dashboard Quick Actions Grid */
+.dashboard-actions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Inventory Cards Grid */
+.inventory-products-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Khata Master-Detail Layout */
+.khata-screen-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ==========================================================================
+   Tablet Adaptations (768px to 1023px)
+   ========================================================================== */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .app-container {
+    max-width: 860px !important;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08);
+  }
+
+  .bottom-nav {
+    max-width: 860px;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 14px;
+  }
+
+  .dashboard-actions-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  /* POS Tablet 2-Column Split Terminal */
+  .pos-screen-layout {
+    display: grid !important;
+    grid-template-columns: 1.25fr 1fr !important;
+    gap: 18px !important;
+    align-items: start !important;
+  }
+
+  .pos-products-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  .pos-cart-panel {
+    position: sticky;
+    top: calc(var(--top-header-height) + 12px);
+  }
+
+  /* Centered Tablet Modal Dialogs */
+  .modal-backdrop {
+    align-items: center !important;
+    padding: 24px !important;
+  }
+
+  .bottom-sheet {
+    max-width: 620px !important;
+    border-radius: var(--radius-lg) !important;
+    animation: zoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+}
+
+/* ==========================================================================
+   Desktop & Laptop Adaptations (>= 1024px)
+   ========================================================================== */
+@media (min-width: 1024px) {
+  body {
+    background-color: var(--bg-app);
+  }
+
+  .app-container {
+    max-width: 100% !important;
+    box-shadow: none !important;
+    background-color: var(--bg-app);
+    min-height: 100vh;
+  }
+
+  /* Desktop Top Navbar Display */
+  .desktop-navbar {
+    display: block !important;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    width: 100%;
+    background-color: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    backdrop-filter: blur(12px);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .desktop-navbar-inner {
+    max-width: var(--content-max-width, 1400px);
+    margin: 0 auto;
+    height: var(--desktop-header-height, 68px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--space-xl, 32px);
+    gap: 16px;
+  }
+
+  .desktop-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+    position: relative;
+    white-space: nowrap;
+  }
+
+  .desktop-nav-link:hover {
+    color: var(--color-primary);
+    background-color: var(--bg-surface-subtle);
+  }
+
+  .desktop-nav-link.active {
+    color: var(--color-primary);
+    background-color: var(--color-primary-light);
+    font-weight: 700;
+  }
+
+  .desktop-nav-badge {
+    background-color: var(--color-danger);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: bold;
+    padding: 1px 6px;
+    border-radius: var(--radius-full);
+    margin-left: 4px;
+  }
+
+  /* Hide mobile bars on desktop */
+  .app-header {
+    display: none !important;
+  }
+
+  .bottom-nav {
+    display: none !important;
+  }
+
+  /* Main Workspace Content Area */
+  .app-content {
+    max-width: var(--content-max-width, 1400px);
+    width: 100%;
+    margin: 0 auto;
+    padding: 24px 32px 48px 32px;
+  }
+
+  /* 4-column metric grid */
+  .stat-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  /* Multi-column quick action grid on dashboard */
+  .dashboard-actions-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  /* POS Desktop Split-Screen Counter Terminal */
+  .pos-screen-layout {
+    display: grid !important;
+    grid-template-columns: 1fr 440px !important;
+    gap: 24px !important;
+    align-items: start !important;
+  }
+
+  .pos-products-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 12px !important;
+    max-height: 540px !important;
+  }
+
+  .pos-cart-panel {
+    position: sticky;
+    top: calc(var(--desktop-header-height, 68px) + 20px);
+  }
+
+  /* Desktop Modal Dialogs */
+  .modal-backdrop {
+    align-items: center !important;
+    padding: 32px !important;
+  }
+
+  .bottom-sheet {
+    max-width: 660px !important;
+    border-radius: var(--radius-lg) !important;
+    animation: zoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: var(--shadow-floating) !important;
+  }
+}
