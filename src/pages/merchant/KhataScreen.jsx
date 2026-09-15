@@ -27,6 +27,8 @@ import {
   HelpCircle,
   FileText,
   CreditCard,
+  Mic,
+  Sparkles,
 } from 'lucide-react';
 import { khataApi } from '../../api/khata.api';
 import { uploadApi } from '../../api/upload.api';
@@ -36,6 +38,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { SkeletonRow } from '../../components/ui/Skeleton';
 import { playSoundboxTone } from '../../utils/soundbox';
 import { KhataCustomerQRScannerModal } from '../../components/merchant/KhataCustomerQRScannerModal';
+import { AIVoiceKhataModal } from '../../components/merchant/AIVoiceKhataModal';
 import { getImageUrl } from '../../utils/imageUrl';
 
 const QUICK_AMOUNTS = [50, 100, 200, 500, 1000, 2000];
@@ -70,6 +73,7 @@ export const KhataScreen = () => {
   const [showQRScannerModal, setShowQRScannerModal] = useState(false);
   const [showCounterUpiModal, setShowCounterUpiModal] = useState(false);
   const [showCreditLimitModal, setShowCreditLimitModal] = useState(false);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
   const [viewParchiUrl, setViewParchiUrl] = useState(null);
 
   // Express Quick Udhar Modal State
@@ -79,7 +83,6 @@ export const KhataScreen = () => {
   const [expressSelectedItems, setExpressSelectedItems] = useState([]);
   const [expressCustomNotes, setExpressCustomNotes] = useState('');
   const [expressParchiUrl, setExpressParchiUrl] = useState('');
-  const [expressUploading, setExpressUploading] = useState(false);
 
   // 5-Second Floating Undo Banner State
   const [undoToast, setUndoToast] = useState(null);
@@ -225,6 +228,50 @@ export const KhataScreen = () => {
       if (selectedCustomer) handleOpenCustomer(selectedCustomer);
     } catch {
       alert('Undo nahi ho paya. Kripya passbook me jakar check karein.');
+    }
+  };
+
+  // Handle Voice Parsed Action
+  const handleVoiceConfirm = async (parsed) => {
+    const custPhone = parsed.customerMobile || (parsed.matchedCustomer?.customer_mobile || parsed.matchedCustomer?.phone);
+    const custName = parsed.customerName || 'Customer';
+
+    if (!custPhone && !parsed.matchedCustomer) {
+      // Prompt for phone if customer wasn't matched
+      const enteredPhone = prompt(`Customer "${custName}" ka 10-digit mobile number enter karein:`);
+      if (!enteredPhone || enteredPhone.replace(/\D/g, '').length < 10) {
+        alert('Valid mobile number required.');
+        return;
+      }
+      parsed.customerMobile = enteredPhone.replace(/\D/g, '').slice(-10);
+    }
+
+    const finalPhone = parsed.customerMobile || custPhone;
+
+    try {
+      if (parsed.type === 'CREDIT') {
+        await khataApi.addCredit({
+          customer_name: custName,
+          customer_mobile: finalPhone,
+          amount: parsed.amount,
+          notes: parsed.items || 'Voice Entry',
+          items_summary: parsed.items || 'Voice Entry',
+        });
+        playSoundboxTone('credit');
+      } else {
+        await khataApi.recordPayment(finalPhone, {
+          customer_name: custName,
+          amount: parsed.amount,
+          payment_mode: 'cash',
+          notes: parsed.items || 'Voice Payment',
+        });
+        playSoundboxTone('payment');
+      }
+
+      triggerUndoToast({ customer_name: custName, customer_mobile: finalPhone }, parsed.amount, parsed.type);
+      await loadKhata(debouncedSearch);
+    } catch (err) {
+      alert(err?.response?.data?.message || err.message || 'Voice entry darj nahi ho payi.');
     }
   };
 
@@ -414,13 +461,22 @@ export const KhataScreen = () => {
                   Bahi-Khata & Ledger
                 </h1>
                 <p className="text-xs sm:text-sm text-gray-500 font-medium">
-                  Instant 1-Tap udhar, WhatsApp reminders, aur zero-dispute audit trail
+                  Voice entry, WhatsApp reminders, aur zero-dispute audit trail
                 </p>
               </div>
             </div>
 
             {/* Top Action Buttons */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <button
+                onClick={() => setShowVoiceModal(true)}
+                className="flex items-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md shadow-indigo-200"
+                title="AI Voice Bol Kar Khata Likhein"
+              >
+                <Mic className="w-4 h-4" />
+                <span>🎙️ Bol Kar Likhein</span>
+              </button>
+
               <button
                 onClick={() => setShowQRScannerModal(true)}
                 className="flex items-center gap-2 px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs sm:text-sm rounded-xl border border-gray-200 transition"
@@ -1007,6 +1063,14 @@ export const KhataScreen = () => {
             </div>
           </div>
         )}
+
+        {/* MODAL: AI VOICE KHATA */}
+        <AIVoiceKhataModal
+          isOpen={showVoiceModal}
+          onClose={() => setShowVoiceModal(false)}
+          customers={customers}
+          onConfirm={handleVoiceConfirm}
+        />
 
         {/* MODAL 2: COUNTER UPI QR */}
         {showCounterUpiModal && selectedCustomer && (
