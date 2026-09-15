@@ -3,7 +3,7 @@
  * 
  * Hinglish Hint:
  * Dukaandar (Merchant) ka dedicated sliding side menu:
- * - Main Billing & Counter: Dashboard, POS, Inventory, Khata Book
+ * - Main Billing & Counter: Dashboard, POS, Inventory, Khata Book, Mandi Procurement List
  * - Dukan Operations: Pocket Profit, Daily Expenses, Customer Pickup Verification, Shop Settings
  */
 
@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Receipt,
   BookOpen,
+  ClipboardList,
   Package,
   TrendingUp,
   Wallet,
@@ -120,7 +121,7 @@ export const SideDrawer = ({ isOpen, onClose }) => {
                     display: 'inline-block',
                   }}
                 >
-                  🏪 Dukaandar (Partner)
+                  Dukaandar (Merchant)
                 </span>
               </div>
             </div>
@@ -216,6 +217,17 @@ export const SideDrawer = ({ isOpen, onClose }) => {
               <div style={{ flex: 1, textAlign: 'left' }}>
                 <div className="drawer-link-title">Customer Khata</div>
                 <div className="drawer-link-sub">Udhar ledger aur payment reminder</div>
+              </div>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </button>
+
+            <button className="drawer-link-btn" onClick={() => handleNavigate('/merchant/procurement-list')}>
+              <div className="drawer-icon-bubble" style={{ background: '#e0f2fe', color: '#0284c7' }}>
+                <ClipboardList size={18} />
+              </div>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div className="drawer-link-title">Mandi Procurement List</div>
+                <div className="drawer-link-sub">Mandi khareed suchi, low stock & PDF</div>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>

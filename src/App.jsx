@@ -1,8 +1,8 @@
 /**
- * ShopMe Merchant Main Application Router & State Wrapper
+ * ShopMe Merchant Application Router
  * 
  * Features:
- * - Lazy-loaded route code-splitting with React.Suspense
+ * - Lazy loading for all merchant pages for optimal bundle size
  * - Global ErrorBoundary protection against runtime crashes
  * - Branded LoadingSpinner for authentication check and route transitions
  * - Global AuthContext, POSContext, ThemeContext, and LanguageContext
@@ -35,6 +35,9 @@ const POSScreen = lazy(() =>
 );
 const KhataScreen = lazy(() =>
   import('./pages/merchant/KhataScreen').then((m) => ({ default: m.KhataScreen }))
+);
+const ProcurementListScreen = lazy(() =>
+  import('./pages/merchant/ProcurementListScreen').then((m) => ({ default: m.ProcurementListScreen }))
 );
 const ExpenseScreen = lazy(() =>
   import('./pages/merchant/ExpenseScreen').then((m) => ({ default: m.ExpenseScreen }))
@@ -142,6 +145,16 @@ function App() {
                       }
                     />
                     <Route path="/khata" element={<Navigate to="/merchant/khata" replace />} />
+                    <Route
+                      path="/merchant/procurement-list"
+                      element={
+                        <ProtectedMerchantRoute>
+                          <ProcurementListScreen />
+                        </ProtectedMerchantRoute>
+                      }
+                    />
+                    <Route path="/procurement" element={<Navigate to="/merchant/procurement-list" replace />} />
+                    <Route path="/merchant/procurement" element={<Navigate to="/merchant/procurement-list" replace />} />
                     <Route
                       path="/merchant/expenses"
                       element={

@@ -10,6 +10,7 @@
  *   - POS Billing (Counter terminal with live cart badge)
  *   - Stock & Catalog (Inventory)
  *   - Khata Book (Udhar ledger)
+ *   - Mandi List (Procurement)
  *   - Pocket Profit (Analytics)
  *   - Daily Expenses (Kharche)
  *   - Pickup Counter (OTP verify)
@@ -28,6 +29,7 @@ import {
   Receipt,
   Package,
   BookOpen,
+  ClipboardList,
   TrendingUp,
   Wallet,
   ShieldCheck,
@@ -118,6 +120,7 @@ export const DesktopNavbar = () => {
           {/* Center: Desktop Navigation Links */}
           <nav
             style={{
+              margin: '0 auto',
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
@@ -157,6 +160,14 @@ export const DesktopNavbar = () => {
             >
               <BookOpen size={17} />
               <span>Customer Khata</span>
+            </NavLink>
+
+            <NavLink
+              to="/merchant/procurement-list"
+              className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
+            >
+              <ClipboardList size={17} />
+              <span>Mandi List</span>
             </NavLink>
 
             <NavLink
