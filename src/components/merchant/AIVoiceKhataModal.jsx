@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, MicOff, Volume2, Sparkles, Check, X, ArrowDownLeft, ArrowUpRight, AlertCircle } from 'lucide-react';
+import { Mic, MicOff, Volume2, Sparkles, Check, X, ArrowDownLeft, ArrowUpRight, AlertCircle, User, Phone, Tag } from 'lucide-react';
 
 /**
  * Intelligent Hinglish Speech Parser for Khata Entry
- * Examples:
- * - "Ramesh ko 2 packet doodh 140 rupay udhar likho" -> { name: "Ramesh", amount: 140, type: "CREDIT", items: "2 packet doodh" }
- * - "Suresh se 500 rupay jama liye" -> { name: "Suresh", amount: 500, type: "PAYMENT", items: "Jama payment" }
- * - "Priya 350 udhar" -> { name: "Priya", amount: 350, type: "CREDIT", items: "Udhar" }
  */
 export function parseKhataVoiceCommand(transcript, existingCustomers = []) {
   const text = transcript.toLowerCase().trim();
   let type = 'CREDIT'; // default to Udhar
-  if (text.includes('jama') || text.includes('mil') || text.includes('pay') || text.includes('diye') || text.includes('aaye') || text.includes('payment')) {
+  if (
+    text.includes('jama') ||
+    text.includes('mil') ||
+    text.includes('pay') ||
+    text.includes('diye') ||
+    text.includes('aaye') ||
+    text.includes('payment')
+  ) {
     type = 'PAYMENT';
   }
 
@@ -28,13 +31,13 @@ export function parseKhataVoiceCommand(transcript, existingCustomers = []) {
 
   for (const cust of existingCustomers) {
     const cName = (cust.customer_name || cust.name || '').toLowerCase();
-    const cPhone = (cust.customer_mobile || cust.phone || '');
-    if (cName && text.includes(cName)) {
+    const cPhone = cust.customer_mobile || cust.phone || '';
+    if (cName && cName.length >= 3 && text.includes(cName)) {
       matchedCustomer = cust;
       customerName = cust.customer_name || cust.name;
       break;
     }
-    if (cPhone && text.includes(cPhone.slice(-4))) {
+    if (cPhone && cPhone.length >= 4 && text.includes(cPhone.slice(-4))) {
       matchedCustomer = cust;
       customerName = cust.customer_name || cust.name;
       break;
@@ -42,10 +45,12 @@ export function parseKhataVoiceCommand(transcript, existingCustomers = []) {
   }
 
   if (!matchedCustomer) {
-    // Guess name: First word before 'ko', 'se', 'ka'
-    const nameMatch = text.match(/^([a-zA-Z\u0900-\u097F]+)(?:\s+ko|\s+se|\s+ka)?/i);
-    if (nameMatch && !['ek', 'do', 'teen', 'udhar', 'jama', 'paise'].includes(nameMatch[1])) {
-      customerName = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1);
+    const words = text.split(' ').filter(Boolean);
+    if (words.length > 0) {
+      const firstWord = words[0].replace(/[^a-zA-Z0-9]/g, '');
+      if (firstWord && !['ek', 'do', 'teen', 'udhar', 'jama', 'paise', 'bhai'].includes(firstWord.toLowerCase())) {
+        customerName = firstWord.charAt(0).toUpperCase() + firstWord.slice(1);
+      }
     }
   }
 
@@ -59,8 +64,8 @@ export function parseKhataVoiceCommand(transcript, existingCustomers = []) {
   }
 
   return {
-    customerName: customerName || (matchedCustomer ? (matchedCustomer.customer_name || matchedCustomer.name) : ''),
-    customerMobile: matchedCustomer ? (matchedCustomer.customer_mobile || matchedCustomer.phone) : '',
+    customerName: customerName || (matchedCustomer ? matchedCustomer.customer_name || matchedCustomer.name : 'Customer'),
+    customerMobile: matchedCustomer ? matchedCustomer.customer_mobile || matchedCustomer.phone : '',
     amount,
     type,
     items: items || (type === 'CREDIT' ? 'Voice Udhar Entry' : 'Voice Cash Payment'),
@@ -88,17 +93,16 @@ export const AIVoiceKhataModal = ({ isOpen, onClose, customers = [], onConfirm }
       return;
     }
 
-    // Initialize Web Speech API
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setErrorMsg('Aapke browser me speech recognition support nahi hai. Kripya Chrome use karein.');
+      setErrorMsg('Aapke browser me speech recognition support nahi hai. Niche text box me type karein.');
       return;
     }
 
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.lang = 'hi-IN'; // Hindi / Hinglish primary
+    recognition.lang = 'hi-IN';
 
     recognition.onstart = () => {
       setIsListening(true);
@@ -148,6 +152,22 @@ export const AIVoiceKhataModal = ({ isOpen, onClose, customers = [], onConfirm }
     }
   };
 
+  const handleManualTextChange = (text) => {
+    setTranscript(text);
+    if (text.trim().length > 3) {
+      const parsed = parseKhataVoiceCommand(text, customers);
+      setParsedResult(parsed);
+    } else {
+      setParsedResult(null);
+    }
+  };
+
+  const applySample = (sample) => {
+    setTranscript(sample);
+    const parsed = parseKhataVoiceCommand(sample, customers);
+    setParsedResult(parsed);
+  };
+
   const handleSave = () => {
     if (!parsedResult || !parsedResult.amount || parsedResult.amount <= 0) {
       alert('Rakam (amount) samajh nahi aayi. Dobara bole ya manually likhein.');
@@ -160,114 +180,250 @@ export const AIVoiceKhataModal = ({ isOpen, onClose, customers = [], onConfirm }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
-      <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 border border-gray-100">
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        backgroundColor: 'rgba(15, 23, 42, 0.75)',
+        backdropFilter: 'blur(6px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 999,
+        padding: '16px',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          backgroundColor: '#ffffff',
+          borderRadius: '24px',
+          maxWidth: '460px',
+          width: '100%',
+          padding: '24px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+          border: '1px solid #e2e8f0',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center font-black shadow-md shadow-indigo-200">
-              <Sparkles className="w-5 h-5" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '14px', borderBottom: '1px solid #f1f5f9' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Sparkles size={20} />
             </div>
             <div>
-              <h3 className="font-black text-gray-900 text-base">🎙️ AI Voice Khata</h3>
-              <p className="text-xs text-gray-500">Bol kar turant Udhar / Jama likhein</p>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                Bol Kar Khata Likhein
+              </h3>
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                AI Hinglish Voice Assistant
+              </span>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600">
-            <X className="w-5 h-5" />
+          <button
+            onClick={onClose}
+            style={{
+              padding: '6px',
+              borderRadius: '50%',
+              backgroundColor: '#f1f5f9',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#64748b',
+            }}
+          >
+            <X size={18} />
           </button>
         </div>
 
-        {/* Mic Visualizer */}
-        <div className="text-center py-6 space-y-3 bg-gradient-to-b from-indigo-50/50 to-transparent rounded-2xl border border-indigo-100/60">
-          <div className="relative inline-block">
-            {isListening && (
-              <span className="absolute inset-0 rounded-full bg-indigo-500 animate-ping opacity-30" />
-            )}
-            <button
-              onClick={isListening ? () => recognitionRef.current?.stop() : startListening}
-              className={`w-20 h-20 rounded-full flex items-center justify-center text-white shadow-xl transition transform hover:scale-105 ${
-                isListening ? 'bg-red-600 shadow-red-200' : 'bg-indigo-600 shadow-indigo-200'
-              }`}
-            >
-              {isListening ? <Mic className="w-9 h-9 animate-pulse" /> : <MicOff className="w-9 h-9" />}
-            </button>
+        {/* Mic Visualizer Area */}
+        <div style={{ textAlign: 'center', padding: '24px 0 16px 0' }}>
+          <div
+            onClick={startListening}
+            style={{
+              width: '84px',
+              height: '84px',
+              margin: '0 auto 14px auto',
+              borderRadius: '50%',
+              background: isListening
+                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                : 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              boxShadow: isListening ? '0 0 25px rgba(239, 68, 68, 0.5)' : '0 10px 25px rgba(79, 70, 229, 0.35)',
+              transition: 'all 0.2s',
+            }}
+          >
+            {isListening ? <Mic size={38} /> : <MicOff size={38} />}
           </div>
 
-          <div>
-            <p className="text-sm font-black text-gray-900">
-              {isListening ? 'Sun rahe hain... Aawaz dijiye' : 'Bolne ke liye Mic dabayein'}
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Example: "Ramesh ko 2 packet doodh 140 rupay udhar likho"
-            </p>
+          <p style={{ fontSize: '0.88rem', fontWeight: 700, color: isListening ? '#dc2626' : '#475569', margin: 0 }}>
+            {isListening ? '🎙️ Sun rahe hain... Boliye' : 'Mic par click karein ya bole'}
+          </p>
+          <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+            Jaise: "Ramesh ko 140 rupay udhar doodh" ya "Amit 500 jama"
+          </span>
+        </div>
+
+        {/* Quick Sample Prompts */}
+        <div style={{ marginBottom: '14px' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+            ⚡ Sample Voice Prompts:
+          </div>
+          <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {[
+              'Ramesh ko 140 rupay udhar doodh',
+              'Amit ne 500 rupay jama kiye cash',
+              'Rahul 220 udhar tel',
+            ].map((p, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => applySample(p)}
+                style={{
+                  whiteSpace: 'nowrap',
+                  fontSize: '0.72rem',
+                  padding: '6px 10px',
+                  borderRadius: '10px',
+                  backgroundColor: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155',
+                  cursor: 'pointer',
+                }}
+              >
+                "{p}"
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Live Transcript */}
-        {transcript && (
-          <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-center">
-            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-0.5">Aapne Bola:</p>
-            <p className="text-sm font-semibold text-gray-800 italic">"{transcript}"</p>
-          </div>
-        )}
+        {/* Transcript Input Box */}
+        <div style={{ marginBottom: '14px' }}>
+          <textarea
+            value={transcript}
+            onChange={(e) => handleManualTextChange(e.target.value)}
+            placeholder="Yahan boliye ya type karein (e.g. Ramesh 150 udhar doodh)..."
+            style={{
+              width: '100%',
+              minHeight: '60px',
+              padding: '10px 12px',
+              borderRadius: '12px',
+              border: '1.5px solid #cbd5e1',
+              fontSize: '0.88rem',
+              outline: 'none',
+              resize: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
 
-        {/* Error Message */}
+        {/* Error message */}
         {errorMsg && (
-          <div className="bg-red-50 text-red-700 text-xs p-3 rounded-xl flex items-center gap-2 border border-red-200">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{errorMsg}</span>
+          <div style={{ backgroundColor: '#fef2f2', color: '#ef4444', padding: '8px 12px', borderRadius: '10px', fontSize: '0.8rem', marginBottom: '12px' }}>
+            {errorMsg}
           </div>
         )}
 
-        {/* AI Parsed Card */}
+        {/* Parsed AI Intelligence Card */}
         {parsedResult && (
-          <div className="bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-transparent border-2 border-indigo-200 rounded-2xl p-4 space-y-3 animate-in zoom-in-95">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-indigo-700 uppercase tracking-wider flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5" /> AI Auto-Detected:
-              </span>
+          <div
+            style={{
+              backgroundColor: parsedResult.type === 'CREDIT' ? '#fef2f2' : '#f0fdf4',
+              border: `1.5px solid ${parsedResult.type === 'CREDIT' ? '#fecaca' : '#bbf7d0'}`,
+              borderRadius: '16px',
+              padding: '14px',
+              marginBottom: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span
-                className={`text-xs font-black px-2 py-0.5 rounded-md ${
-                  parsedResult.type === 'CREDIT' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-                }`}
+                style={{
+                  backgroundColor: parsedResult.type === 'CREDIT' ? '#ef4444' : '#10b981',
+                  color: '#ffffff',
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  padding: '3px 8px',
+                  borderRadius: '6px',
+                }}
               >
-                {parsedResult.type === 'CREDIT' ? 'Udhar (+)' : 'Jama (-)'}
+                {parsedResult.type === 'CREDIT' ? '🔴 UDHAR (Credit)' : '🟢 JAMA (Payment)'}
+              </span>
+              <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0f172a' }}>
+                ₹{parsedResult.amount.toLocaleString('en-IN')}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-left">
-              <div className="bg-white/90 p-2.5 rounded-xl border border-gray-100">
-                <p className="text-[10px] text-gray-400 font-bold">Customer:</p>
-                <p className="text-sm font-black text-gray-900 truncate">
-                  {parsedResult.customerName || 'Select Customer'}
-                </p>
+            <div style={{ fontSize: '0.84rem', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <User size={14} color="#64748b" />
+                <span>Customer: <strong>{parsedResult.customerName}</strong> {parsedResult.customerMobile && `(${parsedResult.customerMobile})`}</span>
               </div>
-
-              <div className="bg-white/90 p-2.5 rounded-xl border border-gray-100">
-                <p className="text-[10px] text-gray-400 font-bold">Rakam (Amount):</p>
-                <p className="text-base font-black text-indigo-700">₹{parsedResult.amount}</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Tag size={14} color="#64748b" />
+                <span>Details: {parsedResult.items}</span>
               </div>
             </div>
-
-            {parsedResult.items && (
-              <div className="bg-white/90 p-2 rounded-xl border border-gray-100 text-left">
-                <p className="text-[10px] text-gray-400 font-bold">Samaan / Details:</p>
-                <p className="text-xs font-medium text-gray-700">{parsedResult.items}</p>
-              </div>
-            )}
-
-            <button
-              onClick={handleSave}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-sm rounded-xl transition shadow-md shadow-indigo-200 flex items-center justify-center gap-2"
-            >
-              <Check className="w-4 h-4" />
-              <span>Sahi Hai, Khate me Likhein</span>
-            </button>
           </div>
         )}
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              flex: 1,
+              padding: '12px',
+              backgroundColor: '#f1f5f9',
+              color: '#475569',
+              border: '1px solid #cbd5e1',
+              borderRadius: '12px',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!parsedResult || !parsedResult.amount}
+            style={{
+              flex: 2,
+              padding: '12px',
+              background: parsedResult && parsedResult.amount ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#cbd5e1',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '12px',
+              fontWeight: 800,
+              fontSize: '0.92rem',
+              cursor: parsedResult && parsedResult.amount ? 'pointer' : 'not-allowed',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+            }}
+          >
+            <Check size={18} />
+            <span>1-Tap Khata Me Save</span>
+          </button>
+        </div>
       </div>
     </div>
   );
 };
-export default AIVoiceKhataModal;

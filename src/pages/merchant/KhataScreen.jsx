@@ -24,18 +24,20 @@ import {
   Sliders,
   ChevronRight,
   User,
-  HelpCircle,
   FileText,
   CreditCard,
   Mic,
   Sparkles,
+  DollarSign,
+  Send,
+  Eye,
+  AlertCircle,
 } from 'lucide-react';
 import { khataApi } from '../../api/khata.api';
 import { uploadApi } from '../../api/upload.api';
 import { useAuth } from '../../context/AuthContext';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { useDebounce } from '../../hooks/useDebounce';
-import { SkeletonRow } from '../../components/ui/Skeleton';
 import { playSoundboxTone } from '../../utils/soundbox';
 import { KhataCustomerQRScannerModal } from '../../components/merchant/KhataCustomerQRScannerModal';
 import { AIVoiceKhataModal } from '../../components/merchant/AIVoiceKhataModal';
@@ -106,85 +108,53 @@ export const KhataScreen = () => {
 
   const [newCreditLimit, setNewCreditLimit] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [uploadingParchi, setUploadingParchi] = useState(false);
 
   const debouncedSearch = useDebounce(search, 250);
 
-  // Load Khata Summary & Customer list
+  // Load Khata Data
   const loadKhata = useCallback(async (query = '') => {
     try {
       setLoading(true);
-      const [sumRes, custRes] = await Promise.all([
-        khataApi.getSummary().catch(() => ({ total_outstanding_amount: 0, total_customers: 0 })),
-        khataApi.listCustomers(query).catch(() => []),
+      const [sumRes, custRes] = await Promise.allSettled([
+        khataApi.getSummary(),
+        khataApi.getCustomers(query),
       ]);
-      setSummary(sumRes || { total_outstanding_amount: 0, total_customers: 0 });
-      const list = Array.isArray(custRes) ? custRes : (custRes?.customers || []);
-      setCustomers(list);
 
-      // Auto-select first customer if none selected on desktop
-      if (list.length > 0 && !selectedCustomer) {
-        handleOpenCustomer(list[0]);
+      if (sumRes.status === 'fulfilled' && sumRes.value?.data) {
+        setSummary(sumRes.value.data);
+      }
+      if (custRes.status === 'fulfilled' && custRes.value?.data) {
+        const list = custRes.value.data.customers || custRes.value.data || [];
+        setCustomers(Array.isArray(list) ? list : []);
       }
     } catch (err) {
-      console.error('Khata load error:', err);
+      console.error('Failed to load khata:', err);
     } finally {
       setLoading(false);
     }
-  }, [selectedCustomer]);
+  }, []);
 
   useEffect(() => {
     loadKhata(debouncedSearch);
   }, [debouncedSearch, loadKhata]);
 
-  // Open Customer Passbook
+  // Load selected customer passbook
   const handleOpenCustomer = async (cust) => {
+    setSelectedCustomer(cust);
+    setLoadingHistory(true);
     try {
-      setSelectedCustomer(cust);
-      setLoadingHistory(true);
       const phone = cust.customer_mobile || cust.phone;
-      const history = await khataApi.getCustomerKhataHistory(phone);
-      setCustomerHistory(history);
+      const res = await khataApi.getStatement(phone);
+      setCustomerHistory(res.data);
     } catch (err) {
-      console.error('History load error:', err);
+      console.error('Failed to load passbook:', err);
     } finally {
       setLoadingHistory(false);
     }
   };
 
-  // Open Express Quick Udhar Modal
-  const handleOpenExpressModal = (cust) => {
-    setExpressCustomer(cust);
-    setExpressAmount('');
-    setExpressSelectedItems([]);
-    setExpressCustomNotes('');
-    setExpressParchiUrl('');
-    setShowExpressModal(true);
-  };
-
-  // QR Code scanned handler
-  const handleCustomerScanned = (scannedData) => {
-    setShowQRScannerModal(false);
-    const cleanPhone = (scannedData.phone || '').replace(/\D/g, '').slice(-10);
-    const existing = customers.find(
-      (c) => (c.customer_mobile || c.phone || '').replace(/\D/g, '').slice(-10) === cleanPhone
-    );
-
-    if (existing) {
-      handleOpenExpressModal(existing);
-    } else {
-      setCreditForm({
-        customer_name: scannedData.name || `Customer ${cleanPhone.slice(-4)}`,
-        customer_mobile: cleanPhone,
-        amount: '',
-        notes: '',
-        bill_number: '',
-        parchi_image_url: '',
-      });
-      setShowAddCreditModal(true);
-    }
-  };
-
-  // Trigger 5-Second Undo Toast
+  // 5-Second Floating Undo Trigger
   const triggerUndoToast = (cust, amount, type) => {
     if (undoToast?.timer) clearTimeout(undoToast.timer);
     const timer = setTimeout(() => {
@@ -199,54 +169,51 @@ export const KhataScreen = () => {
     });
   };
 
-  // Undo action
+  // Perform Undo
   const handlePerformUndo = async () => {
     if (!undoToast) return;
     const { customer, amount, type } = undoToast;
     setUndoToast(null);
 
+    const phone = customer.customer_mobile || customer.phone;
+    const name = customer.customer_name || customer.name || 'Customer';
+
     try {
-      const phone = customer.customer_mobile || customer.phone;
       if (type === 'CREDIT') {
         await khataApi.recordPayment(phone, {
-          customer_name: customer.customer_name || customer.name,
+          customer_name: name,
           amount,
-          payment_mode: 'reversal',
-          notes: 'Auto-Undo typo mistake',
+          payment_mode: 'cash',
+          notes: 'Auto-Undo Mistake Reversal',
         });
       } else {
         await khataApi.addCredit({
-          customer_name: customer.customer_name || customer.name,
+          customer_name: name,
           customer_mobile: phone,
           amount,
-          notes: 'Auto-Undo payment typo',
+          notes: 'Auto-Undo Payment Reversal',
         });
       }
       playSoundboxTone('reversal');
-      alert('Galti sudhar di gayi hai aur balance restore ho gaya hai.');
-      loadKhata(debouncedSearch);
-      if (selectedCustomer) handleOpenCustomer(selectedCustomer);
+      alert('Undo Safal! Galti sudhar di gayi hai.');
+      await loadKhata(debouncedSearch);
+      if (selectedCustomer && (selectedCustomer.customer_mobile || selectedCustomer.phone) === phone) {
+        handleOpenCustomer(selectedCustomer);
+      }
     } catch {
-      alert('Undo nahi ho paya. Kripya passbook me jakar check karein.');
+      alert('Undo nahi ho paya. Passbook me jakar adjustment entry karein.');
     }
   };
 
-  // Handle Voice Parsed Action
-  const handleVoiceConfirm = async (parsed) => {
-    const custPhone = parsed.customerMobile || (parsed.matchedCustomer?.customer_mobile || parsed.matchedCustomer?.phone);
+  // Voice Khata Callback
+  const handleVoiceSuccess = async (parsed) => {
     const custName = parsed.customerName || 'Customer';
+    const finalPhone = parsed.customerMobile || (parsed.matchedCustomer ? parsed.matchedCustomer.customer_mobile || parsed.matchedCustomer.phone : '');
 
-    if (!custPhone && !parsed.matchedCustomer) {
-      // Prompt for phone if customer wasn't matched
-      const enteredPhone = prompt(`Customer "${custName}" ka 10-digit mobile number enter karein:`);
-      if (!enteredPhone || enteredPhone.replace(/\D/g, '').length < 10) {
-        alert('Valid mobile number required.');
-        return;
-      }
-      parsed.customerMobile = enteredPhone.replace(/\D/g, '').slice(-10);
+    if (!finalPhone) {
+      alert(`Customer "${custName}" ka phone number list me nahi mila. Niche se customer select karke entry karein.`);
+      return;
     }
-
-    const finalPhone = parsed.customerMobile || custPhone;
 
     try {
       if (parsed.type === 'CREDIT') {
@@ -275,11 +242,21 @@ export const KhataScreen = () => {
     }
   };
 
+  // Open Express Quick Udhar Modal
+  const handleOpenExpressModal = (cust) => {
+    setExpressCustomer(cust);
+    setExpressAmount('');
+    setExpressSelectedItems([]);
+    setExpressCustomNotes('');
+    setExpressParchiUrl('');
+    setShowExpressModal(true);
+  };
+
   // Submit Express Quick Credit
   const handleExpressSubmit = async (type = 'CREDIT') => {
     const numAmt = parseFloat(expressAmount);
     if (!numAmt || numAmt <= 0) {
-      alert('Kripya sahi rakam (amount > ₹0) chunein ya enter karein.');
+      alert('Kripya sahi rakam (amount > 0) chunein ya enter karein.');
       return;
     }
 
@@ -448,40 +425,87 @@ export const KhataScreen = () => {
 
   return (
     <AppLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Top Header Card */}
-        <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-sm">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-100">
-                <BookOpen className="w-6 h-6" />
+      <div style={{ maxWidth: '1280px', margin: '0 auto', paddingBottom: '40px' }}>
+        {/* =========================================================================
+            1. TOP HEADER & SUMMARY CARD
+           ========================================================================= */}
+        <div
+          style={{
+            background: '#ffffff',
+            borderRadius: '24px',
+            padding: '24px',
+            marginBottom: '20px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            border: '1px solid #e2e8f0',
+          }}
+        >
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div
+                style={{
+                  width: '52px',
+                  height: '52px',
+                  borderRadius: '16px',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 8px 18px rgba(239, 68, 68, 0.3)',
+                }}
+              >
+                <BookOpen size={28} />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                  Bahi-Khata & Ledger
+                <h1 style={{ fontSize: '1.6rem', fontWeight: 900, color: '#0f172a', margin: 0, letterSpacing: '-0.5px' }}>
+                  Customer Bahi-Khata Book
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-500 font-medium">
-                  Voice entry, WhatsApp reminders, aur zero-dispute audit trail
+                <p style={{ fontSize: '0.84rem', color: '#64748b', margin: '2px 0 0 0' }}>
+                  AI Voice Entry, Express 1-Tap Udhar, WhatsApp Reminders & Digital Passbook
                 </p>
               </div>
             </div>
 
-            {/* Top Action Buttons */}
-            <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <button
                 onClick={() => setShowVoiceModal(true)}
-                className="flex items-center gap-2 px-3.5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md shadow-indigo-200"
-                title="AI Voice Bol Kar Khata Likhein"
+                style={{
+                  padding: '11px 18px',
+                  background: 'linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  fontSize: '0.88rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  boxShadow: '0 6px 16px rgba(124, 58, 237, 0.35)',
+                }}
               >
-                <Mic className="w-4 h-4" />
+                <Mic size={18} />
                 <span>🎙️ Bol Kar Likhein</span>
               </button>
 
               <button
                 onClick={() => setShowQRScannerModal(true)}
-                className="flex items-center gap-2 px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs sm:text-sm rounded-xl border border-gray-200 transition"
+                style={{
+                  padding: '11px 16px',
+                  backgroundColor: '#f8fafc',
+                  color: '#334155',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: '14px',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                }}
               >
-                <QrCode className="w-4 h-4 text-gray-600" />
+                <QrCode size={18} color="#4f46e5" />
                 <span>Scan QR</span>
               </button>
 
@@ -490,418 +514,502 @@ export const KhataScreen = () => {
                   setCreditForm({ customer_name: '', customer_mobile: '', amount: '', notes: '', bill_number: '', parchi_image_url: '' });
                   setShowAddCreditModal(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md shadow-red-200"
+                style={{
+                  padding: '11px 18px',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  fontSize: '0.88rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  boxShadow: '0 6px 16px rgba(239, 68, 68, 0.3)',
+                }}
               >
-                <Plus className="w-4 h-4" />
+                <Plus size={18} />
                 <span>+ Naya Khata</span>
               </button>
             </div>
           </div>
 
-          {/* KPI Summary Strip */}
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-5 pt-5 border-t border-gray-100">
-            <div className="bg-red-50/70 border border-red-100 rounded-xl p-3.5">
-              <p className="text-[11px] font-extrabold text-red-600 uppercase tracking-wider">Kul Udhar Baki</p>
-              <p className="text-lg sm:text-2xl font-black text-red-700 mt-0.5">
+          {/* KPI Strip */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '12px',
+              marginTop: '20px',
+              paddingTop: '18px',
+              borderTop: '1px solid #f1f5f9',
+            }}
+          >
+            <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', borderRadius: '16px', padding: '14px 18px' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#dc2626', textTransform: 'uppercase' }}>
+                Kul Market Udhar Baki
+              </div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#991b1b', marginTop: '2px' }}>
                 ₹{(summary?.total_outstanding_amount ?? 0).toLocaleString('en-IN')}
-              </p>
+              </div>
             </div>
 
-            <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3.5">
-              <p className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider">Total Accounts</p>
-              <p className="text-lg sm:text-2xl font-black text-blue-700 mt-0.5">
+            <div style={{ background: '#eff6ff', border: '1px solid #dbeafe', borderRadius: '16px', padding: '14px 18px' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#2563eb', textTransform: 'uppercase' }}>
+                Total Udhar Accounts
+              </div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#1e40af', marginTop: '2px' }}>
                 {summary?.total_customers ?? customers.length}
-              </p>
+              </div>
             </div>
 
-            <div className="bg-amber-50/70 border border-amber-100 rounded-xl p-3.5">
-              <p className="text-[11px] font-extrabold text-amber-700 uppercase tracking-wider">📅 Aaj Due</p>
-              <p className="text-lg sm:text-2xl font-black text-amber-800 mt-0.5">{dueTodayCount}</p>
+            <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: '16px', padding: '14px 18px' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase' }}>
+                ⏰ Aaj Due Date (PTP)
+              </div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#92400e', marginTop: '2px' }}>
+                {dueTodayCount} Customers
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Search & Filter Bar */}
-        <div className="bg-white border border-gray-200/90 rounded-2xl p-4 shadow-sm space-y-3">
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <div className="relative flex-1 w-full">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        {/* =========================================================================
+            2. MASTER-DETAIL SPLIT SCREEN (LEFT: CUSTOMER LIST | RIGHT: PANNA LEDGER)
+           ========================================================================= */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px', alignItems: 'start' }}>
+          {/* ----------------- LEFT PANEL: CUSTOMERS DIRECTORY ----------------- */}
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '24px',
+              padding: '20px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px',
+            }}
+          >
+            {/* Search Box */}
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <Search size={18} style={{ position: 'absolute', left: '12px', color: '#94a3b8' }} />
               <input
                 type="text"
                 placeholder="Search customer by name or phone..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition outline-none"
+                style={{
+                  width: '100%',
+                  padding: '11px 36px 11px 38px',
+                  borderRadius: '12px',
+                  border: '1.5px solid #cbd5e1',
+                  fontSize: '0.88rem',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
               />
               {search && (
                 <button
                   onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                  style={{ position: 'absolute', right: '10px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X size={16} />
                 </button>
               )}
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div style={{ display: 'flex', gap: '6px' }}>
               <button
                 onClick={() => setSelectedFilter('all')}
-                className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition ${
-                  selectedFilter === 'all'
-                    ? 'bg-gray-900 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  borderRadius: '10px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  border: selectedFilter === 'all' ? 'none' : '1px solid #cbd5e1',
+                  backgroundColor: selectedFilter === 'all' ? '#4f46e5' : '#f8fafc',
+                  color: selectedFilter === 'all' ? '#ffffff' : '#475569',
+                  cursor: 'pointer',
+                }}
               >
                 All ({customers.length})
               </button>
-
               <button
                 onClick={() => setSelectedFilter('due_today')}
-                className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition ${
-                  selectedFilter === 'due_today'
-                    ? 'bg-amber-600 text-white shadow-sm'
-                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
-                }`}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  borderRadius: '10px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  border: selectedFilter === 'due_today' ? 'none' : '1px solid #cbd5e1',
+                  backgroundColor: selectedFilter === 'due_today' ? '#d97706' : '#f8fafc',
+                  color: selectedFilter === 'due_today' ? '#ffffff' : '#475569',
+                  cursor: 'pointer',
+                }}
               >
-                📅 Due Today ({dueTodayCount})
+                ⏰ Due Today ({dueTodayCount})
               </button>
-
               <button
                 onClick={() => setSelectedFilter('high_due')}
-                className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition ${
-                  selectedFilter === 'high_due'
-                    ? 'bg-red-600 text-white shadow-sm'
-                    : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
-                }`}
+                style={{
+                  flex: 1,
+                  padding: '8px 10px',
+                  borderRadius: '10px',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  border: selectedFilter === 'high_due' ? 'none' : '1px solid #cbd5e1',
+                  backgroundColor: selectedFilter === 'high_due' ? '#dc2626' : '#f8fafc',
+                  color: selectedFilter === 'high_due' ? '#ffffff' : '#475569',
+                  cursor: 'pointer',
+                }}
               >
-                &gt; ₹2k
+                ⚠️ High Due &gt;₹2k
               </button>
             </div>
-          </div>
 
-          {/* Quick Pick Horizontal Strip */}
-          {customers.length > 0 && !search && (
-            <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-1 scrollbar-none">
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
-                <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
-                Quick Pick:
-              </span>
-              {customers.slice(0, 8).map((cust) => {
-                const bal = cust.current_balance || cust.outstanding_amount || 0;
-                const name = cust.customer_name || cust.name || 'Customer';
-                return (
-                  <button
-                    key={cust.id || cust.customer_mobile || cust.phone}
-                    onClick={() => handleOpenExpressModal(cust)}
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-300 text-left transition shrink-0 group"
-                  >
-                    <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-[10px]">
-                      {name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-xs font-bold text-gray-800 group-hover:text-amber-900">{name}</span>
-                    <span className={`text-[11px] font-black ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      ₹{bal.toLocaleString('en-IN')}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
+            {/* Customers List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '600px', overflowY: 'auto' }}>
+              {loading ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
+                  Khata accounts load ho rahe hain...
+                </div>
+              ) : filteredCustomers.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 16px', color: '#64748b' }}>
+                  <BookOpen size={40} color="#cbd5e1" style={{ margin: '0 auto 10px auto' }} />
+                  <p style={{ fontWeight: 700, margin: 0 }}>Koi customer nahi mila</p>
+                  <span style={{ fontSize: '0.78rem' }}>Naya khata shuru karne ke liye upar "+ Naya Khata" dabayein.</span>
+                </div>
+              ) : (
+                filteredCustomers.map((cust) => {
+                  const isSelected = selectedCustomer && (selectedCustomer.customer_mobile || selectedCustomer.phone) === (cust.customer_mobile || cust.phone);
+                  const bal = cust.current_balance || cust.outstanding_amount || 0;
+                  const name = cust.customer_name || cust.name || 'Customer';
+                  const phone = cust.customer_mobile || cust.phone || '';
 
-        {/* Master-Detail Split Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column: Customer Accounts List */}
-          <div className="lg:col-span-5 space-y-2.5">
-            {loading ? (
-              Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
-            ) : filteredCustomers.length === 0 ? (
-              <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center space-y-2">
-                <BookOpen className="w-10 h-10 text-gray-300 mx-auto" />
-                <p className="text-sm font-bold text-gray-700">Koi Khata Account Nahi Mila</p>
-                <p className="text-xs text-gray-400">
-                  Naya khata shuru karne ke liye upar "+ Naya Khata" dabayein.
-                </p>
-              </div>
-            ) : (
-              filteredCustomers.map((cust) => {
-                const bal = cust.current_balance || cust.outstanding_amount || 0;
-                const isSelected =
-                  selectedCustomer &&
-                  (selectedCustomer.id === cust.id ||
-                    (selectedCustomer.customer_mobile || selectedCustomer.phone) === (cust.customer_mobile || cust.phone));
-                const phone = cust.customer_mobile || cust.phone;
-                const name = cust.customer_name || cust.name || 'Customer';
-                const ptpDate = cust.promise_to_pay_date ? new Date(cust.promise_to_pay_date) : null;
-                const isDueToday = ptpDate && ptpDate.toDateString() === new Date().toDateString() && bal > 0;
-                const isOverdue = ptpDate && ptpDate < new Date() && bal > 0;
-
-                return (
-                  <div
-                    key={cust.id || phone}
-                    onClick={() => handleOpenCustomer(cust)}
-                    className={`bg-white border rounded-2xl p-4 transition-all cursor-pointer shadow-sm relative overflow-hidden ${
-                      isSelected
-                        ? 'border-indigo-600 ring-2 ring-indigo-50 bg-indigo-50/15'
-                        : 'border-gray-200/90 hover:border-gray-300 hover:shadow'
-                    }`}
-                  >
-                    {/* Selected Active Bar Indicator */}
-                    {isSelected && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-600" />}
-
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-700 font-black flex items-center justify-center text-sm shrink-0">
+                  return (
+                    <div
+                      key={cust.id || phone}
+                      onClick={() => handleOpenCustomer(cust)}
+                      style={{
+                        padding: '14px 16px',
+                        borderRadius: '16px',
+                        border: isSelected ? '2px solid #4f46e5' : '1px solid #e2e8f0',
+                        backgroundColor: isSelected ? '#f5f3ff' : '#ffffff',
+                        cursor: 'pointer',
+                        transition: 'all 0.18s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div
+                          style={{
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '12px',
+                            backgroundColor: bal > 0 ? '#fee2e2' : '#dcfce7',
+                            color: bal > 0 ? '#ef4444' : '#16a34a',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 800,
+                            fontSize: '1.1rem',
+                          }}
+                        >
                           {name.charAt(0).toUpperCase()}
                         </div>
-
                         <div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <h3 className="font-bold text-gray-900 text-sm">{name}</h3>
-                            {cust.is_registered && (
-                              <span className="text-[9px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
-                                App User
-                              </span>
-                            )}
+                          <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0f172a' }}>
+                            {name}
                           </div>
-                          <p className="text-xs text-gray-500 font-medium">📞 +91 {phone}</p>
-
-                          {ptpDate && bal > 0 && (
-                            <div className="mt-1.5">
-                              <span
-                                className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
-                                  isOverdue
-                                    ? 'bg-red-100 text-red-700'
-                                    : isDueToday
-                                    ? 'bg-amber-100 text-amber-800'
-                                    : 'bg-blue-50 text-blue-700'
-                                }`}
-                              >
-                                <Calendar className="w-3 h-3" />
-                                {isOverdue ? 'Overdue: ' : isDueToday ? 'Due Today: ' : 'Promise: '}
-                                {ptpDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                              </span>
-                            </div>
-                          )}
+                          <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                            📱 {phone}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="text-right shrink-0">
-                        <p className={`text-base font-black ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: 900, fontSize: '1.05rem', color: bal > 0 ? '#dc2626' : '#16a34a' }}>
                           ₹{bal.toLocaleString('en-IN')}
-                        </p>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                          {bal > 0 ? 'Udhar Baki' : 'Chukta'}
-                        </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenExpressModal(cust);
+                          }}
+                          style={{
+                            marginTop: '4px',
+                            padding: '3px 8px',
+                            backgroundColor: '#fef3c7',
+                            border: '1px solid #fde68a',
+                            borderRadius: '6px',
+                            color: '#b45309',
+                            fontSize: '0.7rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                          }}
+                        >
+                          <Zap size={10} /> + Express
+                        </button>
                       </div>
                     </div>
-
-                    {/* 1-Tap Action Buttons Row */}
-                    <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-gray-100">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenExpressModal(cust);
-                        }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition"
-                      >
-                        <Zap className="w-3.5 h-3.5 fill-amber-600 text-amber-600" />
-                        <span>⚡ 1-Tap Entry</span>
-                      </button>
-
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const text = encodeURIComponent(
-                            `Namaste ${name} ji! ${shop?.name || 'Hamari Dukan'} se aapka baki hisab ₹${bal.toLocaleString('en-IN')} hai. Kripya payment karein. Dhanyawad!`
-                          );
-                          window.open(`https://wa.me/91${phone.replace(/\D/g, '').slice(-10)}?text=${text}`, '_blank');
-                        }}
-                        className="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-green-50 hover:bg-green-100 text-green-700 font-bold text-xs rounded-xl border border-green-200 transition"
-                        title="WhatsApp Reminder"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>WhatsApp</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                  );
+                })
+              )}
+            </div>
           </div>
 
-          {/* Right Column: Customer Passbook / Bahi-Khata Panna */}
-          <div className="lg:col-span-7">
-            {!selectedCustomer ? (
-              <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center space-y-3">
-                <BookOpen className="w-12 h-12 text-indigo-200 mx-auto" />
-                <h3 className="text-base font-bold text-gray-800">Customer Panna Select Karein</h3>
-                <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                  Left side se kisi bhi customer par click karein unka complete bahi-khata dekhne ke liye.
-                </p>
-              </div>
-            ) : (
-              <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-sm space-y-5">
+          {/* ----------------- RIGHT PANEL: DETAILED PANNA LEDGER ----------------- */}
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '24px',
+              padding: '24px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+              border: '1px solid #e2e8f0',
+              minHeight: '600px',
+            }}
+          >
+            {selectedCustomer ? (
+              <div>
                 {/* Panna Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px', paddingBottom: '18px', borderBottom: '1px solid #f1f5f9' }}>
                   <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-lg sm:text-xl font-black text-gray-900">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
                         {selectedCustomer.customer_name || selectedCustomer.name}
                       </h2>
-                      <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
-                        Trust: {selectedCustomer.trust_score || 750}
+                      <span
+                        style={{
+                          backgroundColor: '#e0e7ff',
+                          color: '#4338ca',
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                        }}
+                      >
+                        PANNA VERIFIED
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 font-medium">
-                      📞 +91 {selectedCustomer.customer_mobile || selectedCustomer.phone}
-                    </p>
+                    <div style={{ fontSize: '0.84rem', color: '#64748b', marginTop: '4px' }}>
+                      📱 {selectedCustomer.customer_mobile || selectedCustomer.phone}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setShowCounterUpiModal(true)}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-xl text-xs font-bold hover:bg-green-100 transition"
-                      title="Show Live UPI QR on Screen"
-                    >
-                      <QrCode className="w-4 h-4" />
-                      <span>Counter QR</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setNewCreditLimit(selectedCustomer.credit_limit || 5000);
-                        setShowCreditLimitModal(true);
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 border border-gray-200 rounded-xl text-xs font-bold hover:bg-gray-100 transition"
-                      title="Set Credit Limit"
-                    >
-                      <Sliders className="w-4 h-4" />
-                      <span>Limit</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        const phone = selectedCustomer.customer_mobile || selectedCustomer.phone;
-                        window.open(khataApi.getStatementPdfUrl(phone), '_blank');
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold hover:bg-indigo-100 transition"
-                    >
-                      <Printer className="w-4 h-4" />
-                      <span>PDF</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Big Balance Banner */}
-                <div className="bg-gradient-to-r from-red-50 to-rose-50/40 border border-red-200/80 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div>
-                    <span className="text-[11px] font-black tracking-wider text-red-700 uppercase">
-                      KUL BAKI (CUSTOMER OWES)
-                    </span>
-                    <p className="text-3xl font-black text-red-600 mt-0.5">
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+                      Kul Baaki Balance
+                    </div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 900, color: (selectedCustomer.current_balance || selectedCustomer.outstanding_amount || 0) > 0 ? '#dc2626' : '#16a34a' }}>
                       ₹{(selectedCustomer.current_balance || selectedCustomer.outstanding_amount || 0).toLocaleString('en-IN')}
-                    </p>
-                    {selectedCustomer.credit_limit > 0 && (
-                      <p className="text-xs text-gray-500 font-semibold mt-1">
-                        Seema: ₹{selectedCustomer.credit_limit.toLocaleString('en-IN')}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleOpenExpressModal(selectedCustomer)}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-sm"
-                    >
-                      <Zap className="w-4 h-4 fill-white" />
-                      <span>⚡ 1-Tap Entry</span>
-                    </button>
-
-                    <button
-                      onClick={() => setShowRecordPaymentModal(true)}
-                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-sm"
-                    >
-                      <ArrowUpRight className="w-4 h-4" />
-                      <span>Jama (Paise Mile)</span>
-                    </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Passbook Transactions List */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-indigo-600" />
-                      Passbook Transactions History
+                {/* Action Bar (Udhar Dena / Jama Lena / WhatsApp) */}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', padding: '16px 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <button
+                    onClick={() => handleOpenExpressModal(selectedCustomer)}
+                    style={{
+                      flex: 1,
+                      minWidth: '130px',
+                      padding: '12px 14px',
+                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '12px',
+                      fontWeight: 800,
+                      fontSize: '0.88rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(239, 68, 68, 0.25)',
+                    }}
+                  >
+                    <ArrowUpRight size={18} />
+                    <span>+ Udhar Diya</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setPaymentForm({ amount: '', payment_mode: 'cash', notes: '', upi_ref_no: '' });
+                      setShowRecordPaymentModal(true);
+                    }}
+                    style={{
+                      flex: 1,
+                      minWidth: '130px',
+                      padding: '12px 14px',
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '12px',
+                      fontWeight: 800,
+                      fontSize: '0.88rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                    }}
+                  >
+                    <ArrowDownLeft size={18} />
+                    <span>+ Jama Mila</span>
+                  </button>
+
+                  <a
+                    href={`https://wa.me/91${(selectedCustomer.customer_mobile || selectedCustomer.phone).replace(/[^0-9]/g, '').slice(-10)}?text=${encodeURIComponent(
+                      `Namaste ${selectedCustomer.customer_name || 'Customer'} ji, ${shop?.name || 'Hamari Dukan'} se aapka khata baki hisab ₹${(
+                        selectedCustomer.current_balance || selectedCustomer.outstanding_amount || 0
+                      ).toLocaleString('en-IN')} hai. Kripya samay par chukta karein. Dhanyawad!`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      padding: '12px 16px',
+                      backgroundColor: '#25d366',
+                      color: '#ffffff',
+                      borderRadius: '12px',
+                      fontWeight: 800,
+                      fontSize: '0.88rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <MessageSquare size={18} />
+                    <span>WhatsApp Reminder</span>
+                  </a>
+
+                  <button
+                    onClick={() => setShowCounterUpiModal(true)}
+                    style={{
+                      padding: '12px 16px',
+                      backgroundColor: '#f8fafc',
+                      color: '#334155',
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '12px',
+                      fontWeight: 700,
+                      fontSize: '0.88rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <QrCode size={18} color="#4f46e5" />
+                    <span>Counter UPI QR</span>
+                  </button>
+                </div>
+
+                {/* Passbook History Ledger */}
+                <div style={{ marginTop: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                      📜 Passbook History Ledger
                     </h3>
-                    <span className="text-xs text-gray-400 font-medium">
+                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
                       {customerHistory?.transactions?.length || 0} Entries
                     </span>
                   </div>
 
                   {loadingHistory ? (
-                    <SkeletonRow />
+                    <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
+                      Passbook entries load ho rahi hain...
+                    </div>
                   ) : !customerHistory?.transactions || customerHistory.transactions.length === 0 ? (
-                    <div className="text-center py-10 text-gray-400 text-xs bg-gray-50 rounded-2xl border border-gray-100">
-                      Is khate me abhi koi transaction record nahi hai.
+                    <div style={{ textAlign: 'center', padding: '40px 16px', color: '#64748b', background: '#f8fafc', borderRadius: '16px' }}>
+                      <FileText size={36} color="#cbd5e1" style={{ margin: '0 auto 8px auto' }} />
+                      <p style={{ fontWeight: 700, margin: 0 }}>Abhi koi transaction nahi hua hai</p>
+                      <span style={{ fontSize: '0.78rem' }}>Upar diye gaye "+ Udhar Diya" button se pehli entry karein.</span>
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {customerHistory.transactions.map((tx) => {
-                        const isCredit = tx.type === 'GIVE_CREDIT' || tx.type === 'CREDIT';
-                        const isPayment = tx.type === 'RECEIVE_PAYMENT' || tx.type === 'PAYMENT';
-
+                        const isCredit = tx.type === 'CREDIT' || tx.transaction_type === 'CREDIT' || tx.type === 'DEBIT';
                         return (
                           <div
                             key={tx.id}
-                            className="p-3.5 rounded-xl border border-gray-100 hover:border-gray-200 bg-gray-50/60 hover:bg-gray-50 transition flex items-start justify-between gap-3"
+                            style={{
+                              padding: '14px 16px',
+                              borderRadius: '14px',
+                              border: '1px solid #e2e8f0',
+                              backgroundColor: isCredit ? '#fff8f8' : '#f6fdf9',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            }}
                           >
-                            <div className="flex items-start gap-3">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-                                  isCredit ? 'bg-red-100 text-red-600' : isPayment ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-700'
-                                }`}
+                                style={{
+                                  width: '36px',
+                                  height: '36px',
+                                  borderRadius: '10px',
+                                  backgroundColor: isCredit ? '#fee2e2' : '#dcfce7',
+                                  color: isCredit ? '#ef4444' : '#16a34a',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
                               >
-                                {isCredit ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                                {isCredit ? <ArrowUpRight size={18} /> : <ArrowDownLeft size={18} />}
                               </div>
-
-                              <div className="space-y-0.5">
-                                <p className="text-xs font-bold text-gray-900">
-                                  {isCredit ? 'Udhar Diya' : isPayment ? 'Jama Liya' : 'Reversal Entry'}
-                                </p>
-                                <p className="text-[11px] text-gray-400">
-                                  {new Date(tx.created_at).toLocaleString('en-IN', {
+                              <div>
+                                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}>
+                                  {tx.notes || tx.description || (isCredit ? 'Udhar Saaman' : 'Payment Received')}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                                  {new Date(tx.created_at || tx.date).toLocaleString('en-IN', {
                                     day: 'numeric',
                                     month: 'short',
                                     hour: '2-digit',
                                     minute: '2-digit',
                                   })}
-                                </p>
-                                {tx.notes && <p className="text-xs text-gray-600 font-medium">📝 {tx.notes}</p>}
-                                {tx.bill_number && (
-                                  <p className="text-[11px] text-gray-400">Bill #{tx.bill_number}</p>
-                                )}
-
-                                {tx.parchi_image_url && (
-                                  <button
-                                    onClick={() => setViewParchiUrl(tx.parchi_image_url)}
-                                    className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md hover:bg-indigo-100 mt-1"
-                                  >
-                                    <ImageIcon className="w-3 h-3" />
-                                    <span>Parchi Saboot Dekhein</span>
-                                  </button>
-                                )}
+                                  {tx.bill_number && ` • Bill #${tx.bill_number}`}
+                                </div>
                               </div>
                             </div>
 
-                            <div className="text-right shrink-0">
-                              <p className={`text-sm font-black ${isCredit ? 'text-red-600' : 'text-green-600'}`}>
-                                {isCredit ? `+₹${tx.amount}` : `-₹${tx.amount}`}
-                              </p>
-                              {tx.balance_after !== undefined && (
-                                <p className="text-[10px] text-gray-400 font-bold">Baki: ₹{tx.balance_after}</p>
+                            <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div>
+                                <div style={{ fontWeight: 900, fontSize: '1.1rem', color: isCredit ? '#dc2626' : '#16a34a' }}>
+                                  {isCredit ? `+₹${tx.amount.toLocaleString('en-IN')}` : `-₹${tx.amount.toLocaleString('en-IN')}`}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                                  Bal: ₹{(tx.balance_after || tx.running_balance || 0).toLocaleString('en-IN')}
+                                </div>
+                              </div>
+
+                              {tx.parchi_image_url && (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewParchiUrl(getImageUrl(tx.parchi_image_url))}
+                                  style={{
+                                    padding: '6px',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#ffffff',
+                                    border: '1px solid #cbd5e1',
+                                    cursor: 'pointer',
+                                  }}
+                                  title="Parchi Photo Dekhein"
+                                >
+                                  <ImageIcon size={16} color="#4f46e5" />
+                                </button>
                               )}
                             </div>
                           </div>
@@ -911,432 +1019,643 @@ export const KhataScreen = () => {
                   )}
                 </div>
               </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '120px 20px', color: '#64748b' }}>
+                <BookOpen size={56} color="#cbd5e1" style={{ margin: '0 auto 16px auto' }} />
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1e293b', margin: 0 }}>
+                  Customer Panna Chunein
+                </h3>
+                <p style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '6px', maxWidth: '340px', margin: '6px auto 0 auto' }}>
+                  Left side se kisi bhi customer par click karein uska bahi-khata ledger aur passbook dekhne ke liye.
+                </p>
+              </div>
             )}
           </div>
         </div>
+      </div>
 
-        {/* 5-Second Floating Undo Banner */}
-        {undoToast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 animate-in fade-in">
-            <div>
-              <p className="text-xs font-bold text-gray-300">
-                {undoToast.type === 'CREDIT' ? 'Udhar Darj Hua' : 'Jama Darj Hua'} ✅
-              </p>
-              <p className="text-sm font-black text-white">
-                {undoToast.customer.customer_name || undoToast.customer.name}: ₹{undoToast.amount.toLocaleString('en-IN')}
-              </p>
+      {/* =========================================================================
+          3. EXPRESS QUICK UDHAR MODAL (ZERO-TYPING 1-TAP ENTRY)
+         ========================================================================= */}
+      {showExpressModal && expressCustomer && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+            padding: '16px',
+          }}
+          onClick={() => setShowExpressModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '24px',
+              maxWidth: '480px',
+              width: '100%',
+              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              border: '1px solid #e2e8f0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#f59e0b', textTransform: 'uppercase' }}>
+                  ⚡ Zero-Typing Express Entry
+                </span>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0f172a', margin: '2px 0 0 0' }}>
+                  {expressCustomer.customer_name || expressCustomer.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowExpressModal(false)}
+                style={{ padding: '6px', borderRadius: '50%', backgroundColor: '#f1f5f9', border: 'none', cursor: 'pointer' }}
+              >
+                <X size={18} color="#64748b" />
+              </button>
             </div>
-            <button
-              onClick={handlePerformUndo}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-gray-950 font-black text-xs rounded-xl transition shadow-sm"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>UNDO</span>
-            </button>
-            <button onClick={() => setUndoToast(null)} className="text-gray-400 hover:text-white p-1">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
 
-        {/* MODAL 1: ⚡ EXPRESS QUICK UDHAR MODAL */}
-        {showExpressModal && expressCustomer && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-gray-100">
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black shadow-md shadow-amber-200">
-                    <Zap className="w-5 h-5 fill-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-gray-900 text-base">⚡ Express Quick Khata</h3>
-                    <p className="text-xs text-gray-500">1-Tap Fast Udhar & Jama</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowExpressModal(false)}
-                  className="p-1.5 rounded-xl hover:bg-gray-100 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+            {/* Amount Input & Preset Chips */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                Rakam (Amount ₹) <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                type="number"
+                placeholder="₹ 0"
+                value={expressAmount}
+                onChange={(e) => setExpressAmount(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  borderRadius: '12px',
+                  border: '2px solid #cbd5e1',
+                  fontSize: '1.3rem',
+                  fontWeight: 900,
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+
+              {/* Preset Chips */}
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                {QUICK_AMOUNTS.map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setExpressAmount((prev) => String((parseFloat(prev) || 0) + amt))}
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: '8px',
+                      backgroundColor: '#f1f5f9',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: '#1e293b',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    +₹{amt}
+                  </button>
+                ))}
               </div>
+            </div>
 
-              {/* Customer Identity Card */}
-              <div className="bg-gray-50 rounded-2xl p-3.5 flex items-center justify-between border border-gray-200">
-                <div>
-                  <p className="text-sm font-bold text-gray-900">
-                    {expressCustomer.customer_name || expressCustomer.name}
-                  </p>
-                  <p className="text-xs text-gray-500">📞 +91 {expressCustomer.customer_mobile || expressCustomer.phone}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-base font-black text-red-600">
-                    ₹{(expressCustomer.current_balance || expressCustomer.outstanding_amount || 0).toLocaleString('en-IN')}
-                  </p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase">Pehle ka Baki</p>
-                </div>
-              </div>
-
-              {/* Big Amount Input */}
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-2xl font-black text-gray-400">₹</span>
-                <input
-                  type="number"
-                  placeholder="0"
-                  autoFocus
-                  value={expressAmount}
-                  onChange={(e) => setExpressAmount(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3.5 bg-green-50/50 border-2 border-green-500 rounded-2xl text-2xl font-black text-gray-900 focus:ring-4 focus:ring-green-100 outline-none"
-                />
-              </div>
-
-              {/* Quick Amount Preset Chips */}
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">⚡ Quick Amount (1-Tap):</span>
-                <div className="flex flex-wrap gap-2">
-                  {QUICK_AMOUNTS.map((amt) => (
+            {/* Preset Item Chips */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                Saaman / Items (Quick Select):
+              </label>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {QUICK_ITEMS.map((item) => {
+                  const isSel = expressSelectedItems.includes(item);
+                  return (
                     <button
-                      key={amt}
+                      key={item}
                       type="button"
                       onClick={() => {
-                        const cur = parseFloat(expressAmount) || 0;
-                        setExpressAmount(String(cur + amt));
+                        if (isSel) {
+                          setExpressSelectedItems((prev) => prev.filter((i) => i !== item));
+                        } else {
+                          setExpressSelectedItems((prev) => [...prev, item]);
+                        }
                       }}
-                      className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-extrabold text-xs rounded-xl border border-indigo-200 transition"
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: '8px',
+                        backgroundColor: isSel ? '#e0e7ff' : '#ffffff',
+                        border: isSel ? '1.5px solid #4f46e5' : '1px solid #cbd5e1',
+                        color: isSel ? '#4338ca' : '#475569',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
                     >
-                      +₹{amt}
+                      {isSel && '✓ '} {item}
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Quick Item Chips */}
-              <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">📦 Samaan (Zero Typing):</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {QUICK_ITEMS.map((item) => {
-                    const isSelected = expressSelectedItems.includes(item);
-                    return (
-                      <button
-                        key={item}
-                        type="button"
-                        onClick={() => {
-                          if (isSelected) {
-                            setExpressSelectedItems((prev) => prev.filter((i) => i !== item));
-                          } else {
-                            setExpressSelectedItems((prev) => [...prev, item]);
-                          }
-                        }}
-                        className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white border-indigo-600'
-                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                        }`}
-                      >
-                        {item}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 2 Big Action Buttons */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <button
-                  onClick={() => handleExpressSubmit('CREDIT')}
-                  disabled={actionLoading || !expressAmount || parseFloat(expressAmount) <= 0}
-                  className="flex items-center justify-center gap-2 py-3.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-black text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-red-200"
-                >
-                  <ArrowDownLeft className="w-5 h-5" />
-                  <span>Udhar Diya (+₹{expressAmount || 0})</span>
-                </button>
-
-                <button
-                  onClick={() => handleExpressSubmit('PAYMENT')}
-                  disabled={actionLoading || !expressAmount || parseFloat(expressAmount) <= 0}
-                  className="flex items-center justify-center gap-2 py-3.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-black text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-green-200"
-                >
-                  <ArrowUpRight className="w-5 h-5" />
-                  <span>Jama Liya (-₹{expressAmount || 0})</span>
-                </button>
+                  );
+                })}
               </div>
             </div>
+
+            {/* Custom Notes */}
+            <div style={{ marginBottom: '20px' }}>
+              <input
+                type="text"
+                placeholder="Koi aur note ya parchi no. (optional)..."
+                value={expressCustomNotes}
+                onChange={(e) => setExpressCustomNotes(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.84rem',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            {/* Action Buttons: Udhar Dena (Red) vs Jama Lena (Green) */}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                disabled={actionLoading || !expressAmount || parseFloat(expressAmount) <= 0}
+                onClick={() => handleExpressSubmit('CREDIT')}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 6px 16px rgba(239, 68, 68, 0.3)',
+                }}
+              >
+                🔴 Udhar Likhein (Credit)
+              </button>
+
+              <button
+                type="button"
+                disabled={actionLoading || !expressAmount || parseFloat(expressAmount) <= 0}
+                onClick={() => handleExpressSubmit('PAYMENT')}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '14px',
+                  fontWeight: 800,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 6px 16px rgba(16, 185, 129, 0.3)',
+                }}
+              >
+                🟢 Jama Likhein (Payment)
+              </button>
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* MODAL: AI VOICE KHATA */}
-        <AIVoiceKhataModal
-          isOpen={showVoiceModal}
-          onClose={() => setShowVoiceModal(false)}
-          customers={customers}
-          onConfirm={handleVoiceConfirm}
-        />
+      {/* =========================================================================
+          4. 5-SECOND FLOATING UNDO TOAST
+         ========================================================================= */}
+      {undoToast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#0f172a',
+            color: '#ffffff',
+            borderRadius: '16px',
+            padding: '12px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
+            zIndex: 9999,
+          }}
+        >
+          <div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>
+              {undoToast.type === 'CREDIT' ? '🔴 Udhar Darj Hua' : '🟢 Jama Darj Hua'}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+              {undoToast.customer.customer_name || undoToast.customer.name}: ₹{undoToast.amount.toLocaleString('en-IN')}
+            </div>
+          </div>
 
-        {/* MODAL 2: COUNTER UPI QR */}
-        {showCounterUpiModal && selectedCustomer && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-gray-900 text-base">Counter UPI QR Code</h3>
-                <button
-                  onClick={() => setShowCounterUpiModal(false)}
-                  className="p-1 rounded-xl text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+          <button
+            onClick={handlePerformUndo}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: 'rgba(245, 158, 11, 0.2)',
+              border: '1px solid #f59e0b',
+              borderRadius: '8px',
+              color: '#f59e0b',
+              fontWeight: 900,
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <RotateCcw size={13} /> UNDO
+          </button>
 
-              <p className="text-xs text-gray-500">
-                Customer ko scan karayein. Payment aate hi hisab update karein.
-              </p>
+          <button
+            onClick={() => setUndoToast(null)}
+            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
-              <div className="p-4 bg-white border-2 border-green-500 rounded-2xl inline-block">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(counterUpiUri)}&size=200x200`}
-                  alt="Counter UPI QR"
-                  className="w-44 h-44 mx-auto"
+      {/* =========================================================================
+          5. MODALS (VOICE, QR SCANNER, PARCHI VIEWER, ADD KHATA)
+         ========================================================================= */}
+      <AIVoiceKhataModal
+        isOpen={showVoiceModal}
+        onClose={() => setShowVoiceModal(false)}
+        customers={customers}
+        onConfirm={handleVoiceSuccess}
+      />
+
+      <KhataCustomerQRScannerModal
+        isOpen={showQRScannerModal}
+        onClose={() => setShowQRScannerModal(false)}
+        onCustomerScanned={(scanned) => {
+          setShowQRScannerModal(false);
+          const found = customers.find((c) => (c.customer_mobile || c.phone) === scanned.phone);
+          if (found) {
+            handleOpenCustomer(found);
+          } else {
+            setCreditForm({
+              customer_name: scanned.name || '',
+              customer_mobile: scanned.phone || '',
+              amount: '',
+              notes: '',
+              bill_number: '',
+              parchi_image_url: '',
+            });
+            setShowAddCreditModal(true);
+          }
+        }}
+      />
+
+      {/* View Parchi Photo Modal */}
+      {viewParchiUrl && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+          }}
+          onClick={() => setViewParchiUrl(null)}
+        >
+          <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <img src={viewParchiUrl} alt="Parchi receipt" style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '12px' }} />
+            <button
+              onClick={() => setViewParchiUrl(null)}
+              style={{
+                position: 'absolute',
+                top: '-14px',
+                right: '-14px',
+                backgroundColor: '#ffffff',
+                border: 'none',
+                borderRadius: '50%',
+                padding: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={20} color="#0f172a" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Customer / Credit Modal */}
+      {showAddCreditModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+            padding: '16px',
+          }}
+          onClick={() => setShowAddCreditModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '24px',
+              maxWidth: '460px',
+              width: '100%',
+              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              border: '1px solid #e2e8f0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                Naya Khata Panna Kholein
+              </h3>
+              <button
+                onClick={() => setShowAddCreditModal(false)}
+                style={{ padding: '6px', borderRadius: '50%', backgroundColor: '#f1f5f9', border: 'none', cursor: 'pointer' }}
+              >
+                <X size={18} color="#64748b" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddCredit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Customer Ka Naam <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Ramesh Sharma"
+                  value={creditForm.customer_name}
+                  onChange={(e) => setCreditForm({ ...creditForm, customer_name: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box' }}
                 />
               </div>
 
               <div>
-                <p className="font-black text-gray-900 text-base">{shop?.name || 'Hamari Dukan'}</p>
-                <p className="text-xs text-gray-500">{shop?.upi_id || 'merchant@upi'}</p>
-                <p className="text-xl font-black text-green-600 mt-1">
-                  ₹{(selectedCustomer.current_balance || selectedCustomer.outstanding_amount || 0).toLocaleString('en-IN')}
-                </p>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  10-Digit Mobile Number <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  maxLength={10}
+                  placeholder="9876543210"
+                  value={creditForm.customer_mobile}
+                  onChange={(e) => setCreditForm({ ...creditForm, customer_mobile: e.target.value.replace(/[^0-9]/g, '') })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                />
               </div>
 
-              <button
-                onClick={() => setShowCounterUpiModal(false)}
-                className="w-full py-2.5 bg-gray-900 text-white font-bold text-xs rounded-xl"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        )}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Pehla Udhar Rakam (₹) <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  placeholder="₹ 0"
+                  value={creditForm.amount}
+                  onChange={(e) => setCreditForm({ ...creditForm, amount: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '1rem', fontWeight: 800, boxSizing: 'border-box' }}
+                />
+              </div>
 
-        {/* MODAL 3: SET CREDIT LIMIT */}
-        {showCreditLimitModal && selectedCustomer && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
-              <h3 className="font-bold text-gray-900 text-base">Set Credit Limit (Seema)</h3>
-              <p className="text-xs text-gray-500">
-                {selectedCustomer.customer_name || selectedCustomer.name} ke liye maximum udhar limit set karein:
-              </p>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Saaman / Items Details (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 2 packet doodh, 1kg chini"
+                  value={creditForm.notes}
+                  onChange={(e) => setCreditForm({ ...creditForm, notes: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                />
+              </div>
 
-              <input
-                type="number"
-                placeholder="e.g. 5000"
-                value={newCreditLimit}
-                onChange={(e) => setNewCreditLimit(e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold"
-              />
-
-              <div className="flex justify-end gap-2">
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button
-                  onClick={() => setShowCreditLimitModal(false)}
-                  className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600"
+                  type="button"
+                  onClick={() => setShowAddCreditModal(false)}
+                  style={{ flex: 1, padding: '12px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleSaveCreditLimit}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold"
+                  type="submit"
+                  disabled={actionLoading}
+                  style={{ flex: 2, padding: '12px', background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}
                 >
-                  Save Limit
+                  {actionLoading ? 'Darj Ho Raha Hai...' : 'Khata Shuru Karein'}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* MODAL 4: RECORD PAYMENT */}
-        {showRecordPaymentModal && selectedCustomer && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-gray-900 text-base">Jama Liya (Record Payment)</h3>
+      {/* Record Payment Modal */}
+      {showRecordPaymentModal && selectedCustomer && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+            padding: '16px',
+          }}
+          onClick={() => setShowRecordPaymentModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '24px',
+              maxWidth: '440px',
+              width: '100%',
+              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              border: '1px solid #e2e8f0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#10b981', textTransform: 'uppercase' }}>
+                  Payment Entry
+                </span>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0f172a', margin: '2px 0 0 0' }}>
+                  {selectedCustomer.customer_name || selectedCustomer.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowRecordPaymentModal(false)}
+                style={{ padding: '6px', borderRadius: '50%', backgroundColor: '#f1f5f9', border: 'none', cursor: 'pointer' }}
+              >
+                <X size={18} color="#64748b" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRecordPayment} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Jama Rakam (Amount ₹) <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input
+                  type="number"
+                  required
+                  placeholder="₹ 0"
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '1.2rem', fontWeight: 900, boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Payment Mode
+                </label>
+                <select
+                  value={paymentForm.payment_mode}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, payment_mode: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box', background: '#fff' }}
+                >
+                  <option value="cash">💵 Cash / Nagad</option>
+                  <option value="upi">📱 UPI / QR Code</option>
+                  <option value="card">💳 Card / Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Payment Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Purana hisab chukta"
+                  value={paymentForm.notes}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, notes: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button
+                  type="button"
                   onClick={() => setShowRecordPaymentModal(false)}
-                  className="p-1 text-gray-400 hover:text-gray-600"
+                  style={{ flex: 1, padding: '12px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '12px', fontWeight: 700, cursor: 'pointer' }}
                 >
-                  <X className="w-5 h-5" />
+                  Cancel
                 </button>
-              </div>
-
-              <form onSubmit={handleRecordPayment} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Rakam (Amount ₹) *</label>
-                  <input
-                    type="number"
-                    required
-                    autoFocus
-                    placeholder="₹ 500"
-                    value={paymentForm.amount}
-                    onChange={(e) => setPaymentForm((prev) => ({ ...prev, amount: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-lg font-black"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Payment Mode</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['cash', 'upi', 'bank'].map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => setPaymentForm((prev) => ({ ...prev, payment_mode: mode }))}
-                        className={`py-2 text-xs font-bold rounded-xl border capitalize ${
-                          paymentForm.payment_mode === mode
-                            ? 'bg-green-50 text-green-700 border-green-300 ring-2 ring-green-100'
-                            : 'bg-gray-50 text-gray-600 border-gray-200'
-                        }`}
-                      >
-                        {mode}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Notes / Reference</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Counter payment"
-                    value={paymentForm.notes}
-                    onChange={(e) => setPaymentForm((prev) => ({ ...prev, notes: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl text-xs"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowRecordPaymentModal(false)}
-                    className="px-4 py-2.5 border border-gray-200 rounded-xl text-xs font-bold text-gray-600"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={actionLoading}
-                    className="px-6 py-2.5 bg-green-600 text-white font-bold text-xs rounded-xl shadow-md"
-                  >
-                    {actionLoading ? 'Saving...' : 'Jama Record Karein'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* MODAL 5: ADD CREDIT (NAYA KHATA) */}
-        {showAddCreditModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-black text-gray-900 text-base">Naya Khata Panna Kholein</h3>
                 <button
-                  onClick={() => setShowAddCreditModal(false)}
-                  className="p-1 text-gray-400 hover:text-gray-600"
+                  type="submit"
+                  disabled={actionLoading}
+                  style={{ flex: 2, padding: '12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}
                 >
-                  <X className="w-5 h-5" />
+                  {actionLoading ? 'Darj Ho Raha Hai...' : 'Jama Record Karein'}
                 </button>
               </div>
-
-              <form onSubmit={handleAddCredit} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Customer Mobile Number *</label>
-                  <input
-                    type="tel"
-                    required
-                    maxLength={10}
-                    placeholder="9876543210"
-                    value={creditForm.customer_mobile}
-                    onChange={(e) => setCreditForm((prev) => ({ ...prev, customer_mobile: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-bold"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Customer Name (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Ramesh Sharma"
-                    value={creditForm.customer_name}
-                    onChange={(e) => setCreditForm((prev) => ({ ...prev, customer_name: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Udhar Rakam (Amount ₹) *</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="₹ 500"
-                    value={creditForm.amount}
-                    onChange={(e) => setCreditForm((prev) => ({ ...prev, amount: e.target.value }))}
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-lg font-black text-red-600"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Samaan / Notes</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 2 packet doodh, chini"
-                    value={creditForm.notes}
-                    onChange={(e) => setCreditForm((prev) => ({ ...prev, notes: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-xl text-xs"
-                  />
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddCreditModal(false)}
-                    className="px-4 py-2.5 border border-gray-200 rounded-xl text-xs font-bold text-gray-600"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={actionLoading}
-                    className="px-6 py-2.5 bg-red-600 text-white font-bold text-xs rounded-xl shadow-md"
-                  >
-                    {actionLoading ? 'Saving...' : 'Udhar Likhein'}
-                  </button>
-                </div>
-              </form>
-            </div>
+            </form>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* PARCHI PREVIEW MODAL */}
-        {viewParchiUrl && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-            <div className="bg-white rounded-2xl max-w-md w-full p-4 space-y-3">
-              <div className="flex justify-between items-center">
-                <h4 className="font-bold text-gray-900 text-sm">Parchi Saboot (Receipt Proof)</h4>
-                <button onClick={() => setViewParchiUrl(null)} className="p-1 text-gray-400 hover:text-gray-600">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <img src={getImageUrl(viewParchiUrl)} alt="Parchi Proof" className="w-full rounded-xl max-h-96 object-contain" />
+      {/* Counter UPI QR Modal */}
+      {showCounterUpiModal && selectedCustomer && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999,
+            padding: '16px',
+          }}
+          onClick={() => setShowCounterUpiModal(false)}
+        >
+          <div
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '24px',
+              maxWidth: '360px',
+              width: '100%',
+              padding: '24px',
+              textAlign: 'center',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+              border: '1px solid #e2e8f0',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f172a', margin: '0 0 4px 0' }}>
+              Counter UPI Payment
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 16px 0' }}>
+              Grahak se kahein Google Pay / PhonePe se scan karein
+            </p>
+
+            <div
+              style={{
+                width: '200px',
+                height: '200px',
+                margin: '0 auto',
+                backgroundColor: '#f8fafc',
+                borderRadius: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1.5px dashed #cbd5e1',
+              }}
+            >
+              <QrCode size={120} color="#4f46e5" />
             </div>
-          </div>
-        )}
 
-        {/* QR SCANNER MODAL */}
-        <KhataCustomerQRScannerModal
-          isOpen={showQRScannerModal}
-          onClose={() => setShowQRScannerModal(false)}
-          onScanSuccess={handleCustomerScanned}
-        />
-      </div>
+            <div style={{ marginTop: '14px', fontSize: '1.2rem', fontWeight: 900, color: '#dc2626' }}>
+              ₹{(selectedCustomer.current_balance || selectedCustomer.outstanding_amount || 0).toLocaleString('en-IN')}
+            </div>
+
+            <button
+              onClick={() => setShowCounterUpiModal(false)}
+              style={{
+                marginTop: '18px',
+                width: '100%',
+                padding: '12px',
+                backgroundColor: '#f1f5f9',
+                color: '#334155',
+                border: '1px solid #cbd5e1',
+                borderRadius: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Band Karein
+            </button>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 };
-export default KhataScreen;
