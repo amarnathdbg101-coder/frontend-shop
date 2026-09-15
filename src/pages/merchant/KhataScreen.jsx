@@ -1616,7 +1616,7 @@ export const KhataScreen = () => {
             style={{
               backgroundColor: '#ffffff',
               borderRadius: '24px',
-              maxWidth: '360px',
+              maxWidth: '380px',
               width: '100%',
               padding: '24px',
               textAlign: 'center',
@@ -1626,29 +1626,84 @@ export const KhataScreen = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#0f172a', margin: '0 0 4px 0' }}>
-              Counter UPI Payment
+              Counter UPI QR Payment
             </h3>
             <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 16px 0' }}>
-              Grahak se kahein Google Pay / PhonePe se scan karein
+              {selectedCustomer.customer_name || 'Grahak'} ({selectedCustomer.customer_mobile}) ke liye
             </p>
 
-            <div
-              style={{
-                width: '200px',
-                height: '200px',
-                margin: '0 auto',
-                backgroundColor: '#f8fafc',
-                borderRadius: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                border: '1.5px dashed #cbd5e1',
-              }}
-            >
-              <QrCode size={120} color="#4f46e5" />
-            </div>
+            {(() => {
+              const merchantUpiId = (shop?.upi_id || '').trim();
+              const bal = selectedCustomer.current_balance || selectedCustomer.outstanding_amount || 0;
+              const shopTitle = shop?.name || 'Shop';
+              const upiUri = merchantUpiId ? `upi://pay?pa=${encodeURIComponent(merchantUpiId)}&pn=${encodeURIComponent(shopTitle)}&am=${bal}&cu=INR&tn=${encodeURIComponent(`Khata_${selectedCustomer.customer_mobile || ''}`)}` : '';
 
-            <div style={{ marginTop: '14px', fontSize: '1.2rem', fontWeight: 900, color: '#dc2626' }}>
+              if (!merchantUpiId) {
+                return (
+                  <div style={{ padding: '16px', backgroundColor: '#fffbeb', borderRadius: '16px', border: '1px solid #fde68a', color: '#92400e', textAlign: 'left', marginBottom: '14px' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '6px' }}>⚠️ UPI ID Set Nahi Hai</div>
+                    <div style={{ fontSize: '0.78rem', lineHeight: '1.4' }}>
+                      Aapne abhi tak apni dukan ka real UPI ID (jaise: <strong>9876543210@paytm</strong> ya <strong>dukan@okaxis</strong>) profile/settings me add nahi kiya hai.
+                    </div>
+                    <div style={{ fontSize: '0.76rem', marginTop: '8px', color: '#78350f' }}>
+                      Kripya Shop Profile edit karke <strong>Real UPI & QR</strong> tab me apna UPI ID save karein.
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <>
+                  <div
+                    style={{
+                      width: '210px',
+                      height: '210px',
+                      margin: '0 auto',
+                      backgroundColor: '#ffffff',
+                      borderRadius: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      border: '1.5px solid #e2e8f0',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
+                      padding: '8px',
+                    }}
+                  >
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(upiUri)}&size=200x200&margin=2`}
+                      alt="Counter UPI QR"
+                      style={{ width: '100%', height: '100%', display: 'block', borderRadius: '8px' }}
+                    />
+                  </div>
+
+                  <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '0.78rem', color: '#64748b' }}>UPI ID:</span>
+                    <strong style={{ fontSize: '0.84rem', color: '#4f46e5' }}>{merchantUpiId}</strong>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(merchantUpiId);
+                        alert(`UPI ID copy ho gayi: ${merchantUpiId}`);
+                      }}
+                      style={{
+                        background: 'rgba(99, 102, 241, 0.1)',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '2px 8px',
+                        fontSize: '0.72rem',
+                        color: '#4f46e5',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+
+            <div style={{ marginTop: '14px', fontSize: '1.3rem', fontWeight: 900, color: '#dc2626' }}>
               ₹{(selectedCustomer.current_balance || selectedCustomer.outstanding_amount || 0).toLocaleString('en-IN')}
             </div>
 

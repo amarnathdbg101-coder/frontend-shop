@@ -26,6 +26,11 @@ import {
   Mic,
   FileText,
   Sparkles,
+  BookOpen,
+  User,
+  UserCheck,
+  X,
+  RotateCcw,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { usePOS } from '../../context/POSContext';
@@ -38,6 +43,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { playSoundboxTone } from '../../utils/soundbox';
 import { AIVoicePOSModal } from '../../components/pos/AIVoicePOSModal';
 import { POSParchiModal } from '../../components/pos/POSParchiModal';
+import { KhataCustomerPickerModal } from '../../components/merchant/KhataCustomerPickerModal';
 
 export const POSScreen = () => {
   const navigate = useNavigate();
@@ -54,6 +60,10 @@ export const POSScreen = () => {
     setDiscountAmount,
     customerPhone,
     setCustomerPhone,
+    customerName,
+    setCustomerName,
+    selectedKhataCustomer,
+    setSelectedKhataCustomer,
     paymentMethod,
     setPaymentMethod,
     itemCount,
@@ -70,6 +80,7 @@ export const POSScreen = () => {
   // Modals state
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isParchiModalOpen, setIsParchiModalOpen] = useState(false);
+  const [isCustomerPickerOpen, setIsCustomerPickerOpen] = useState(false);
 
   const loadProducts = useCallback(async () => {
     if (!shop?.slug) return;
@@ -137,6 +148,7 @@ export const POSScreen = () => {
 
       const payload = {
         customer_phone: customerPhone.trim() || undefined,
+        customer_name: customerName.trim() || undefined,
         discount_amount: Number(discountAmount) || 0,
         payment_method: paymentMethod,
         items: cart.map((item) => ({
@@ -230,27 +242,68 @@ export const POSScreen = () => {
           {/* Fast Barcode Scanner Input */}
           <form onSubmit={handleBarcodeSubmit} style={{ marginBottom: '12px' }}>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <Barcode size={20} style={{ position: 'absolute', left: '12px', color: 'var(--color-primary)' }} />
+              <Barcode size={20} style={{ position: 'absolute', left: '12px', color: 'var(--color-primary)', pointerEvents: 'none' }} />
               <input
                 type="text"
                 className="form-input"
-                style={{ paddingLeft: '40px', fontWeight: 600 }}
+                style={{
+                  paddingLeft: '40px',
+                  paddingRight: barcodeInput ? '36px' : '14px',
+                  fontWeight: 600,
+                  color: 'var(--text-primary)',
+                  backgroundColor: 'var(--bg-surface)',
+                }}
                 placeholder="Barcode scan karein ya SKU likh ke Enter dabayein..."
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
               />
+              {barcodeInput && (
+                <button
+                  type="button"
+                  onClick={() => setBarcodeInput('')}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '4px',
+                  }}
+                  title="Clear barcode"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
           </form>
 
           {/* Search Bar for manual product tap */}
           <div className="search-box">
-            <Search size={18} />
+            <Search className="search-icon" size={18} />
             <input
               type="text"
               placeholder="Product ka naam dhundhein..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                color: 'var(--text-primary)',
+                backgroundColor: 'var(--bg-surface)',
+              }}
             />
+            {searchTerm && (
+              <button
+                type="button"
+                className="clear-search-btn"
+                onClick={() => setSearchTerm('')}
+                title="Search saaf karein"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
 
           {errorMessage && (
@@ -276,8 +329,24 @@ export const POSScreen = () => {
           <div style={{ marginBottom: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                TAP KARKE ADD KAREIN ({filteredProducts.length})
+                {searchTerm ? `KHHOJE GAYE SAMAN (${filteredProducts.length})` : `TAP KARKE ADD KAREIN (${filteredProducts.length})`}
               </span>
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--color-primary)',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Sabhi Dekhein
+                </button>
+              )}
             </div>
 
             <div className="pos-products-grid" style={{ overflowY: 'auto' }}>
@@ -288,8 +357,39 @@ export const POSScreen = () => {
                   <Skeleton height="54px" borderRadius="var(--radius-md)" />
                   <Skeleton height="54px" borderRadius="var(--radius-md)" />
                 </>
+              ) : filteredProducts.length === 0 ? (
+                <div
+                  style={{
+                    gridColumn: '1 / -1',
+                    textAlign: 'center',
+                    padding: '24px 12px',
+                    backgroundColor: 'var(--bg-surface)',
+                    border: '1px dashed var(--border-subtle)',
+                    borderRadius: 'var(--radius-md)',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  <Package size={28} style={{ margin: '0 auto 6px auto', opacity: 0.5 }} />
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>
+                    "{searchTerm}" nahi mila
+                  </div>
+                  <div style={{ fontSize: '0.74rem', marginTop: '2px', color: 'var(--text-muted)' }}>
+                    Naam ya SKU check karein ya search saaf karein
+                  </div>
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      className="btn btn-secondary btn-sm"
+                      style={{ marginTop: '10px' }}
+                    >
+                      <RotateCcw size={13} />
+                      <span>Search Reset Karein</span>
+                    </button>
+                  )}
+                </div>
               ) : (
-                filteredProducts.slice(0, 20).map((prod) => (
+                filteredProducts.slice(0, 30).map((prod) => (
                   <div
                     key={prod.id}
                     className="card-clickable"
@@ -314,7 +414,7 @@ export const POSScreen = () => {
                         width: '38px',
                         height: '38px',
                         borderRadius: 'var(--radius-sm)',
-                        backgroundColor: '#f8fafc',
+                        backgroundColor: 'var(--bg-surface-subtle)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -329,16 +429,23 @@ export const POSScreen = () => {
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                       ) : (
-                        <Package size={18} color="#94a3b8" />
+                        <Package size={18} color="var(--text-muted)" />
                       )}
                     </div>
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.84rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {prod.name}
                       </div>
-                      <div style={{ fontSize: '0.74rem', color: 'var(--color-primary)', fontWeight: 800 }}>
-                        ₹{prod.price}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.76rem', color: 'var(--color-primary)', fontWeight: 800 }}>
+                          ₹{prod.price}
+                        </span>
+                        {prod.sku && (
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontFamily: 'var(--font-family-mono)' }}>
+                            {prod.sku}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -449,26 +556,12 @@ export const POSScreen = () => {
             </div>
           )}
 
-          {/* Customer Phone & Discount */}
+          {/* Customer Selection & Payment Mode */}
           {cart.length > 0 && (
-            <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>
-                  Customer Mobile No. {paymentMethod === 'credit' && <span style={{ color: 'var(--color-danger)' }}>*</span>}
-                </label>
-                <input
-                  type="tel"
-                  placeholder="Grahak ka mobile number (optional)"
-                  className="form-input"
-                  style={{ padding: '8px 10px', fontSize: '0.85rem' }}
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                />
-              </div>
-
+            <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {/* Payment Method Selector */}
               <div>
-                <label className="form-label" style={{ fontSize: '0.75rem' }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
                   Payment Mode (Bhugtan Ka Tarika)
                 </label>
                 <div className="tab-pills">
@@ -489,13 +582,169 @@ export const POSScreen = () => {
                   <button
                     type="button"
                     className={`tab-pill ${paymentMethod === 'credit' ? 'active' : ''}`}
-                    onClick={() => setPaymentMethod('credit')}
-                    style={{ color: paymentMethod === 'credit' ? 'var(--color-danger)' : undefined }}
+                    onClick={() => {
+                      setPaymentMethod('credit');
+                      if (!selectedKhataCustomer && !customerPhone) {
+                        setIsCustomerPickerOpen(true);
+                      }
+                    }}
+                    style={{ color: paymentMethod === 'credit' ? 'var(--color-danger)' : undefined, fontWeight: 800 }}
                   >
                     📖 Khata Udhar
                   </button>
                 </div>
               </div>
+
+              {/* Customer Selector Section */}
+              {paymentMethod === 'credit' ? (
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-danger)' }}>
+                    Khata Grahak (Customer) *
+                  </label>
+                  
+                  {selectedKhataCustomer ? (
+                    <div
+                      style={{
+                        backgroundColor: '#eff6ff',
+                        border: '1.5px solid #bfdbfe',
+                        borderRadius: '12px',
+                        padding: '10px 12px',
+                        marginBottom: '4px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '50%',
+                              backgroundColor: '#3b82f6',
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              fontSize: '0.85rem',
+                            }}
+                          >
+                            {(selectedKhataCustomer.name || 'G')[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.88rem', color: '#1e3a8a' }}>
+                              {selectedKhataCustomer.name}
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: '#64748b' }}>
+                              {selectedKhataCustomer.phone || customerPhone}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setIsCustomerPickerOpen(true)}
+                            className="btn btn-secondary"
+                            style={{ padding: '3px 8px', fontSize: '0.72rem', fontWeight: 700 }}
+                          >
+                            Badlein
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedKhataCustomer(null);
+                              setCustomerPhone('');
+                              setCustomerName('');
+                            }}
+                            className="btn btn-outline"
+                            style={{ padding: '3px 6px', fontSize: '0.72rem', color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                            title="Grahak hatayein"
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop: '8px',
+                          fontSize: '0.75rem',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          borderTop: '1px dashed #cbd5e1',
+                          paddingTop: '6px',
+                        }}
+                      >
+                        <span style={{ color: '#64748b' }}>
+                          Puraana Udhar: <strong style={{ color: '#dc2626' }}>₹{(selectedKhataCustomer.current_balance || 0).toLocaleString('en-IN')}</strong>
+                        </span>
+                        <span style={{ color: '#1e3a8a' }}>
+                          Naya Kul: <strong>₹{((selectedKhataCustomer.current_balance || 0) + total).toLocaleString('en-IN')}</strong>
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '6px', flexDirection: 'column' }}>
+                      <button
+                        type="button"
+                        onClick={() => setIsCustomerPickerOpen(true)}
+                        className="btn btn-secondary btn-block"
+                        style={{
+                          background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%)',
+                          borderColor: '#c7d2fe',
+                          color: '#4338ca',
+                          fontWeight: 800,
+                          fontSize: '0.82rem',
+                          padding: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <UserCheck size={16} />
+                        <span>👥 Khata Se Grahak Chunein / Search</span>
+                      </button>
+
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <input
+                          type="tel"
+                          placeholder="Ya direct mobile number likhein..."
+                          className="form-input"
+                          style={{ padding: '8px 10px', fontSize: '0.82rem' }}
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>
+                    Customer Mobile No. (Optional)
+                  </label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      type="tel"
+                      placeholder="Grahak ka mobile number"
+                      className="form-input"
+                      style={{ padding: '8px 10px', fontSize: '0.85rem', flex: 1 }}
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomerPickerOpen(true)}
+                      className="btn btn-secondary"
+                      style={{ padding: '8px 12px', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
+                      title="Select customer from Khata"
+                    >
+                      <User size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Bill Totals */}
               <div
@@ -608,6 +857,18 @@ export const POSScreen = () => {
         inventory={products}
         onImportItems={handleAddItemsFromModal}
         onOpenMandiList={() => navigate('/merchant/procurement-list')}
+      />
+
+      {/* Khata Customer Choice & Search Modal */}
+      <KhataCustomerPickerModal
+        isOpen={isCustomerPickerOpen}
+        onClose={() => setIsCustomerPickerOpen(false)}
+        onSelectCustomer={(cust) => {
+          setSelectedKhataCustomer(cust);
+          setCustomerPhone(cust.phone);
+          setCustomerName(cust.name);
+        }}
+        currentTotal={total}
       />
     </AppLayout>
   );

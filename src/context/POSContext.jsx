@@ -18,6 +18,8 @@ export const POSProvider = ({ children }) => {
   // Cart items array: [{ product, quantity, customPrice }]
   const [cart, setCart] = useState([]);
   const [customerPhone, setCustomerPhone] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [selectedKhataCustomer, setSelectedKhataCustomer] = useState(null);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'upi' | 'credit'
 
@@ -56,6 +58,8 @@ export const POSProvider = ({ children }) => {
   const clearCart = () => {
     setCart([]);
     setCustomerPhone('');
+    setCustomerName('');
+    setSelectedKhataCustomer(null);
     setDiscountAmount(0);
     setPaymentMethod('cash');
   };
@@ -83,6 +87,10 @@ export const POSProvider = ({ children }) => {
         cart,
         customerPhone,
         setCustomerPhone,
+        customerName,
+        setCustomerName,
+        selectedKhataCustomer,
+        setSelectedKhataCustomer,
         discountAmount,
         setDiscountAmount,
         paymentMethod,

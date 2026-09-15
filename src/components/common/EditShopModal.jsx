@@ -3,7 +3,7 @@
  * 
  * Hinglish Hint:
  * Dukaandar apni dukan ki saari details (naam, category, pata, shahar, timing,
- * phone, WhatsApp, GPS location, logo aur promotional banners) yahan se update kar sakta hai.
+ * phone, WhatsApp, GPS location, REAL UPI ID, logo aur promotional banners) yahan se update kar sakta hai.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -13,6 +13,11 @@ import {
   Upload,
   Crosshair,
   CheckCircle,
+  QrCode,
+  CreditCard,
+  Sparkles,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 import { shopApi } from '../../api/shop.api';
 import { uploadApi } from '../../api/upload.api';
@@ -46,10 +51,20 @@ const WEEKLY_OFF_OPTIONS = [
   { label: 'Saturday (Shanivar)', value: 'Saturday' },
 ];
 
-export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
-  const { shop, updateShopState } = useAuth();
+const POPULAR_UPI_HANDLES = [
+  { name: 'Google Pay (HDFC)', suffix: '@okhdfcbank' },
+  { name: 'Google Pay (SBI)', suffix: '@oksbi' },
+  { name: 'Google Pay (Axis)', suffix: '@okaxis' },
+  { name: 'Google Pay (ICICI)', suffix: '@okicici' },
+  { name: 'PhonePe', suffix: '@ybl' },
+  { name: 'Paytm', suffix: '@paytm' },
+  { name: 'BHIM UPI', suffix: '@upi' },
+];
 
-  const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'location' | 'timings' | 'branding'
+export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
+  const { shop, updateShopState, refreshShop } = useAuth();
+
+  const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'location' | 'upi' | 'timings' | 'branding'
 
   // Form State
   const [formData, setFormData] = useState({
@@ -61,6 +76,7 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
     pincode: shop?.pincode || '',
     phone: shop?.phone || '',
     whatsapp_number: shop?.whatsapp_number || shop?.phone || '',
+    upi_id: shop?.upi_id || '',
     opening_time: shop?.opening_time || '09:00',
     closing_time: shop?.closing_time || '21:00',
     weekly_off: shop?.weekly_off || '',
@@ -92,6 +108,7 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
         pincode: shop.pincode || '',
         phone: shop.phone || '',
         whatsapp_number: shop.whatsapp_number || shop.phone || '',
+        upi_id: shop.upi_id || '',
         opening_time: shop.opening_time || '09:00',
         closing_time: shop.closing_time || '21:00',
         weekly_off: shop.weekly_off || '',
@@ -175,7 +192,6 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
           if (uploadRes.banners && uploadRes.banners.length > 0) finalBanners = uploadRes.banners;
         } catch (uploadErr) {
           console.warn('Shop images upload warning:', uploadErr);
-          // If upload fails, alert user but allow saving text details if they confirm
           if (!window.confirm('Photos upload nahi ho sakin (' + (uploadErr.message || 'Error') + '). Kya aap baaki details update karna chahte hain?')) {
             setSaving(false);
             return;
@@ -193,6 +209,7 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
         pincode: formData.pincode.trim(),
         phone: formData.phone.trim(),
         whatsapp_number: formData.whatsapp_number.trim(),
+        upi_id: formData.upi_id.trim(),
         opening_time: formData.opening_time,
         closing_time: formData.closing_time,
         weekly_off: formData.weekly_off,
@@ -205,11 +222,11 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
       const updatedShop = await shopApi.updateMyShop(updatePayload);
 
       // 3. Update application auth state
-      updateShopState(updatedShop);
+      if (updateShopState) updateShopState(updatedShop);
       if (refreshShop) await refreshShop();
       if (onUpdated) onUpdated(updatedShop);
 
-      setSuccess('Dukan ki details safaltapoorvak update ho gayi!');
+      setSuccess('Dukan ki details & UPI ID safaltapoorvak update ho gayi!');
       setTimeout(() => {
         onClose();
       }, 1200);
@@ -221,6 +238,11 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
   };
 
   if (!isOpen || !shop) return null;
+
+  // Clean UPI ID Preview URI
+  const previewUpiUri = formData.upi_id
+    ? `upi://pay?pa=${encodeURIComponent(formData.upi_id.trim())}&pn=${encodeURIComponent(formData.name || shop.name || 'Shop')}&cu=INR`
+    : '';
 
   return (
     <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 120 }}>
@@ -248,8 +270,8 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Store size={20} color="var(--color-primary)" />
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>
-              Dukan Details Update Karein
+            <h2 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0 }}>
+              Dukan Details & UPI Settings
             </h2>
           </div>
           <button
@@ -285,8 +307,9 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
           {[
             { id: 'basic', label: '1. Dukan Info' },
             { id: 'location', label: '2. Pata & GPS' },
-            { id: 'timings', label: '3. Timings' },
-            { id: 'branding', label: '4. Logo & Photos' },
+            { id: 'upi', label: '3. Real UPI & QR' },
+            { id: 'timings', label: '4. Timings' },
+            { id: 'branding', label: '5. Logo & Photos' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -370,7 +393,7 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
                   className="btn btn-secondary btn-sm"
                   onClick={() => setActiveTab('location')}
                 >
-                  Next: Pata & GPS →
+                  Next: Pata & GPS &rarr;
                 </button>
               </div>
             </div>
@@ -489,20 +512,142 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
                   className="btn btn-secondary btn-sm"
                   onClick={() => setActiveTab('basic')}
                 >
-                  ← Back
+                  &larr; Back
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setActiveTab('upi')}
+                >
+                  Next: Real UPI & QR &rarr;
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: REAL UPI & PAYMENT */}
+          {activeTab === 'upi' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+                  padding: '14px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid #bfdbfe',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <ShieldCheck size={18} color="#1d4ed8" />
+                  <span style={{ fontWeight: 800, fontSize: '0.85rem', color: '#1e3a8a' }}>
+                    Customer Direct UPI Settlement
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.78rem', color: '#1e40af', lineHeight: 1.4 }}>
+                  Apni dukan ki asli UPI ID yahan daalein. Customer jab Passbook ya Storefront se <strong>"Pay via UPI"</strong> karenge, to paise sidhe aapke is bank account/UPI me jayenge.
+                </p>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 800 }}>
+                  Dukan Ki Asli UPI ID / VPA *
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  style={{
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.5px',
+                    borderColor: formData.upi_id ? 'var(--color-primary)' : 'var(--border-subtle)',
+                  }}
+                  value={formData.upi_id}
+                  onChange={(e) => setFormData({ ...formData, upi_id: e.target.value.toLowerCase().replace(/\s/g, '') })}
+                  placeholder="e.g. 9876543210@paytm ya shop@okhdfcbank"
+                />
+              </div>
+
+              {/* Quick Preset Buttons for Popular UPI Handles */}
+              <div>
+                <label className="form-label" style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Aam UPI Handles:
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {POPULAR_UPI_HANDLES.map((h, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        const base = formData.upi_id.split('@')[0] || (shop.phone || '9876543210');
+                        setFormData({ ...formData, upi_id: `${base}${h.suffix}` });
+                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: '0.7rem', padding: '3px 8px', borderRadius: '12px' }}
+                    >
+                      {h.name} ({h.suffix})
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dynamic Real-time QR Preview */}
+              {formData.upi_id ? (
+                <div
+                  style={{
+                    backgroundColor: 'var(--bg-app)',
+                    border: '1.5px dashed var(--color-primary)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '14px',
+                    textAlign: 'center',
+                    marginTop: '4px',
+                  }}
+                >
+                  <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                    ✅ Dukan Ka Real QR Preview (Customer yahi scan karenge)
+                  </div>
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(previewUpiUri)}&size=140x140&margin=3`}
+                    alt="Real Shop UPI QR Preview"
+                    style={{ width: '130px', height: '130px', borderRadius: '8px', border: '3px solid #ffffff', boxShadow: '0 4px 10px rgba(0,0,0,0.08)', margin: '0 auto', display: 'block' }}
+                  />
+                  <div style={{ marginTop: '8px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
+                    UPI VPA: {formData.upi_id}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    backgroundColor: '#fffbeb',
+                    border: '1px solid #fde68a',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '10px 12px',
+                    fontSize: '0.75rem',
+                    color: '#92400e',
+                  }}
+                >
+                  ⚠️ Agar aapne UPI ID nahi dali, to customer ko payment ke waqt dukan ka QR code nahi mil payega.
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setActiveTab('location')}
+                >
+                  &larr; Back: Pata
                 </button>
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
                   onClick={() => setActiveTab('timings')}
                 >
-                  Next: Timings →
+                  Next: Timings &rarr;
                 </button>
               </div>
             </div>
           )}
 
-          {/* TAB 3: TIMINGS */}
+          {/* TAB 4: TIMINGS */}
           {activeTab === 'timings' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -545,22 +690,22 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
-                  onClick={() => setActiveTab('location')}
+                  onClick={() => setActiveTab('upi')}
                 >
-                  ← Back
+                  &larr; Back: UPI
                 </button>
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
                   onClick={() => setActiveTab('branding')}
                 >
-                  Next: Logo & Photos →
+                  Next: Logo & Photos &rarr;
                 </button>
               </div>
             </div>
           )}
 
-          {/* TAB 4: BRANDING & PHOTOS */}
+          {/* TAB 5: BRANDING & PHOTOS */}
           {activeTab === 'branding' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Shop Logo Section */}
@@ -668,7 +813,7 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
                   className="btn btn-secondary btn-sm"
                   onClick={() => setActiveTab('timings')}
                 >
-                  ← Back: Timings
+                  &larr; Back: Timings
                 </button>
               </div>
             </div>
@@ -682,7 +827,7 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
               className="btn btn-primary btn-block btn-lg"
               style={{ fontWeight: 800 }}
             >
-              {saving ? 'Dukan Update Ho Rahi Hai...' : '✓ Dukan Ki Jankari Save Karein'}
+              {saving ? 'Dukan & UPI Update Ho Rahi Hai...' : '💾 Dukan Ki Jankari & UPI Save Karein'}
             </button>
           </div>
         </form>
