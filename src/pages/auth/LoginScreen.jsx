@@ -1,10 +1,11 @@
-/**
- * Login Screen
+﻿/**
+ * Login Screen (Merchant Portal)
  * 
  * Hinglish Hint:
- * Dukaandar aur Customer dono ke liye fast mobile login page:
+ * Dukaandar ke liye fast mobile & desktop login page:
  * - Email & Password validation
- * - Successful login ke baad Merchant ko seedhe Dashboard par bhejta hai
+ * - 1-Click Google Sign-In via Google Identity Services
+ * - Successful login ke baad seedhe Merchant Dashboard par bhejta hai
  */
 
 import React, { useState } from 'react';
@@ -12,10 +13,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Store, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AppLayout } from '../../components/layout/AppLayout';
+import { GoogleLoginButton } from '../../components/auth/GoogleLoginButton';
 
 export const LoginScreen = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -42,8 +44,23 @@ export const LoginScreen = () => {
     }
   };
 
+  const handleGoogleSuccess = async (idToken) => {
+    setError('');
+    try {
+      const res = await loginWithGoogle(idToken);
+      // Agar dukaandar hai toh Merchant Dashboard, warna Home
+      if (res.user?.role === 'shop' || res.user?.role === 'admin') {
+        navigate('/merchant');
+      } else {
+        navigate('/');
+      }
+    } catch (err) {
+      setError(err.message || 'Google login asafal raha, kripya dobara koshish karein.');
+    }
+  };
+
   return (
-    <AppLayout title="ShopMe" subtitle="Apni Dukan Ka Smart App" hideNav={true}>
+    <AppLayout title="ShopMe Partner" subtitle="Dukan Billing & Management OS" hideNav={true}>
       <div style={{ paddingTop: '20px' }}>
         {/* Brand Banner */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
@@ -63,7 +80,7 @@ export const LoginScreen = () => {
             <Store size={36} />
           </div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            Welcome Back!
+            Merchant Login
           </h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             Apne account me login karke dukan sambhalein
@@ -131,6 +148,20 @@ export const LoginScreen = () => {
             )}
           </button>
         </form>
+
+        {/* Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', gap: '12px' }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color, #e2e8f0)' }} />
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)', fontWeight: 600 }}>OR</span>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color, #e2e8f0)' }} />
+        </div>
+
+        {/* Google Sign-In Button */}
+        <GoogleLoginButton
+          text="continue_with"
+          onSuccess={handleGoogleSuccess}
+          onError={(err) => setError(err.message || 'Google login asafal raha')}
+        />
 
         {/* Switch to Register */}
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.85rem' }}>

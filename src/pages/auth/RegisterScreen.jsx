@@ -1,10 +1,11 @@
-/**
- * Register Screen
+﻿/**
+ * Register Screen (Merchant Portal)
  * 
  * Hinglish Hint:
- * Naye Dukaandar ya Grahak ke registration ke liye form:
+ * Naye Dukaandar ke registration ke liye form:
  * - Full Name, Phone, Email aur Password
- * - Success hone par auto login aur dashboard redirect
+ * - 1-Click Google Merchant Onboarding via Google Identity Services
+ * - Success hone par auto login aur merchant dashboard redirect
  */
 
 import React, { useState } from 'react';
@@ -12,10 +13,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { UserPlus, ArrowRight, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AppLayout } from '../../components/layout/AppLayout';
+import { GoogleLoginButton } from '../../components/auth/GoogleLoginButton';
 
 export const RegisterScreen = () => {
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -47,8 +49,18 @@ export const RegisterScreen = () => {
     }
   };
 
+  const handleGoogleSuccess = async (idToken) => {
+    setError('');
+    try {
+      await loginWithGoogle(idToken);
+      navigate('/merchant');
+    } catch (err) {
+      setError(err.message || 'Google signup asafal raha, kripya dobara koshish karein.');
+    }
+  };
+
   return (
-    <AppLayout title="ShopMe" subtitle="Naya Khata Banayein" hideNav={true} showBack={true}>
+    <AppLayout title="ShopMe Partner" subtitle="Dukan Registration" hideNav={true} showBack={true}>
       <div style={{ paddingTop: '10px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div
@@ -66,7 +78,7 @@ export const RegisterScreen = () => {
           >
             <UserPlus size={30} />
           </div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Account Banayein</h1>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 800 }}>Dukan Register Karein</h1>
           <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
             Apni dukan ko digital banayein 2 minute me
           </p>
@@ -93,7 +105,7 @@ export const RegisterScreen = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Aapka Pura Naam</label>
+            <label className="form-label">Dukaandar Ka Pura Naam</label>
             <input
               type="text"
               name="full_name"
@@ -106,7 +118,7 @@ export const RegisterScreen = () => {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Mobile Number</label>
+            <label className="form-label">Mobile Number (WhatsApp Enabled)</label>
             <input
               type="tel"
               name="phone"
@@ -151,7 +163,7 @@ export const RegisterScreen = () => {
             disabled={loading}
             style={{ marginTop: '12px' }}
           >
-            {loading ? 'Account ban raha hai...' : (
+            {loading ? 'Dukan ban rahi hai...' : (
               <>
                 Register Karein <ArrowRight size={18} />
               </>
@@ -159,8 +171,22 @@ export const RegisterScreen = () => {
           </button>
         </form>
 
+        {/* Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', margin: '20px 0', gap: '12px' }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color, #e2e8f0)' }} />
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted, #64748b)', fontWeight: 600 }}>OR</span>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border-color, #e2e8f0)' }} />
+        </div>
+
+        {/* Google Sign-Up Button */}
+        <GoogleLoginButton
+          text="signup_with"
+          onSuccess={handleGoogleSuccess}
+          onError={(err) => setError(err.message || 'Google signup asafal raha')}
+        />
+
         <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.85rem' }}>
-          <span style={{ color: 'var(--text-secondary)' }}>Pehle se account hai? </span>
+          <span style={{ color: 'var(--text-secondary)' }}>Pehle se dukan registered hai? </span>
           <Link
             to="/login"
             style={{

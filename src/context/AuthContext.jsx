@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Authentication Context
  * 
  * Hinglish Hint:
@@ -69,6 +69,26 @@ export const AuthProvider = ({ children }) => {
     return res;
   };
 
+  // Google Login handler for Merchants
+  const loginWithGoogle = async (idToken) => {
+    const res = await authApi.googleLogin(idToken, 'shop');
+    if (res.access_token) {
+      setToken(res.access_token);
+      setUser(res.user);
+      localStorage.setItem('shopme_token', res.access_token);
+      localStorage.setItem('shopme_user', JSON.stringify(res.user));
+      if (res.user?.role === 'shop' || res.user?.role === 'admin') {
+        try {
+          const shopData = await shopApi.getMyShop();
+          setShop(shopData);
+        } catch (e) {
+          setShop(null);
+        }
+      }
+    }
+    return res;
+  };
+
   // Register handler
   const register = async (userData) => {
     const res = await authApi.register(userData);
@@ -114,6 +134,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!token,
         isMerchant: user?.role === 'shop' || user?.role === 'admin',
         login,
+        loginWithGoogle,
         register,
         logout,
         updateUser,
