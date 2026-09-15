@@ -264,13 +264,32 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
         res = await productApi.bulkImportJSON(parsedItems);
       }
 
-      setImportResult(res.data || res || { total_imported: parsedItems.length, message: 'All items imported' });
+      const payload = res?.data || res || {};
+      const importedCount = payload.imported_count ?? payload.total_imported ?? (Array.isArray(payload) ? payload.length : 0);
+      const totalRows = payload.total_rows ?? parsedItems.length;
+
+      if (importedCount === 0 && totalRows > 0) {
+        const errDetails = Array.isArray(payload.errors) && payload.errors.length > 0
+          ? payload.errors.slice(0, 3).join('. ')
+          : 'Database me insert karte waqt error aaya.';
+        setErrorMessage(`Koi product import nahi ho saka: ${errDetails}`);
+        return;
+      }
+
+      setImportResult({
+        total_imported: importedCount,
+        imported_count: importedCount,
+        skipped_count: payload.skipped_count || 0,
+        failed_count: Array.isArray(payload.errors) ? payload.errors.length : 0,
+        errors: payload.errors || [],
+      });
+
       if (onSuccess) {
         onSuccess();
       }
     } catch (err) {
       console.error('Bulk Import Error:', err);
-      setErrorMessage(err.message || err.response?.data?.message || 'Bulk import karne me error aaya');
+      setErrorMessage(err.response?.data?.message || err.message || 'Bulk import karne me error aaya');
     } finally {
       setLoading(false);
     }
