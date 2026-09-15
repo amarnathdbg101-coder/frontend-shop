@@ -6,6 +6,7 @@
  * - Products ki list lena
  * - Naya product add karna
  * - Barcode scan karke product dhundna (/products/scan/{code})
+ * - Global media vault se master catalog images auto-inherit karna
  * - Categories list lana
  */
 
@@ -31,6 +32,14 @@ export const productApi = {
   // Barcode / SKU Scan se product turant dhundna (POS Fast Billing ke liye)
   scanProduct: async (barcode) => {
     const res = await client.get(`/products/scan/${barcode}`);
+    return res.data;
+  },
+
+  // Global Media Vault: Barcode/SKU ya Naam se master product images dhundna & auto-inherit karna
+  suggestMasterImages: async (code = '', name = '') => {
+    const res = await client.get('/products/media/suggest', {
+      params: { code, name },
+    });
     return res.data;
   },
 

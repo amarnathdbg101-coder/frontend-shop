@@ -2,10 +2,10 @@
  * Cloud Image Upload API Service
  * 
  * Hinglish Hint:
- * Cloudflare R2 image storage service:
+ * Cloudflare R2 image storage service with SHA-256 deduplication & barcode linking:
  * 1. User Avatar upload (/user/avatar)
  * 2. Shop Logo aur Promotional Banners upload (/shops/me/images)
- * 3. Product Catalog Images upload (/products/images - Max 4 images)
+ * 3. Product Catalog Images upload (/products/images - Max 4 images with zero-duplicate R2 upload)
  */
 
 import client from './client';
@@ -49,13 +49,16 @@ export const uploadApi = {
     };
   },
 
-  // 3. Product Images Upload (Up to 4 images)
-  uploadProductImages: async (files) => {
+  // 3. Product Images Upload (Up to 4 images with SHA-256 deduplication and barcode linking)
+  uploadProductImages: async (files, productCode = '') => {
     const formData = new FormData();
     const fileList = Array.from(files || []).slice(0, 4);
     fileList.forEach((file) => {
       formData.append('images', file);
     });
+    if (productCode) {
+      formData.append('product_code', productCode);
+    }
     const res = await client.post('/products/images', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
