@@ -108,7 +108,6 @@ export const KhataScreen = () => {
 
   const [newCreditLimit, setNewCreditLimit] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
-  const [uploadingParchi, setUploadingParchi] = useState(false);
 
   const debouncedSearch = useDebounce(search, 250);
 
@@ -118,15 +117,15 @@ export const KhataScreen = () => {
       setLoading(true);
       const [sumRes, custRes] = await Promise.allSettled([
         khataApi.getSummary(),
-        khataApi.getCustomers(query),
+        khataApi.listCustomers(query),
       ]);
 
-      if (sumRes.status === 'fulfilled' && sumRes.value?.data) {
-        setSummary(sumRes.value.data);
+      if (sumRes.status === 'fulfilled' && sumRes.value) {
+        setSummary(sumRes.value);
       }
-      if (custRes.status === 'fulfilled' && custRes.value?.data) {
-        const list = custRes.value.data.customers || custRes.value.data || [];
-        setCustomers(Array.isArray(list) ? list : []);
+      if (custRes.status === 'fulfilled' && custRes.value) {
+        const list = Array.isArray(custRes.value) ? custRes.value : custRes.value.customers || [];
+        setCustomers(list);
       }
     } catch (err) {
       console.error('Failed to load khata:', err);
@@ -145,8 +144,8 @@ export const KhataScreen = () => {
     setLoadingHistory(true);
     try {
       const phone = cust.customer_mobile || cust.phone;
-      const res = await khataApi.getStatement(phone);
-      setCustomerHistory(res.data);
+      const data = await khataApi.getCustomerHistory(phone);
+      setCustomerHistory(data);
     } catch (err) {
       console.error('Failed to load passbook:', err);
     } finally {
@@ -210,8 +209,17 @@ export const KhataScreen = () => {
     const custName = parsed.customerName || 'Customer';
     const finalPhone = parsed.customerMobile || (parsed.matchedCustomer ? parsed.matchedCustomer.customer_mobile || parsed.matchedCustomer.phone : '');
 
-    if (!finalPhone) {
-      alert(`Customer "${custName}" ka phone number list me nahi mila. Niche se customer select karke entry karein.`);
+    if (!finalPhone || finalPhone.replace(/[^0-9]/g, '').slice(-10).length < 10) {
+      // Auto open Add Khata modal prefilled
+      setCreditForm({
+        customer_name: custName,
+        customer_mobile: '',
+        amount: parsed.amount || '',
+        notes: parsed.items || 'Voice Entry',
+        bill_number: '',
+        parchi_image_url: '',
+      });
+      setShowAddCreditModal(true);
       return;
     }
 
@@ -237,6 +245,12 @@ export const KhataScreen = () => {
 
       triggerUndoToast({ customer_name: custName, customer_mobile: finalPhone }, parsed.amount, parsed.type);
       await loadKhata(debouncedSearch);
+      const newCust = {
+        customer_name: custName,
+        customer_mobile: finalPhone,
+        current_balance: parsed.amount,
+      };
+      handleOpenCustomer(newCust);
     } catch (err) {
       alert(err?.response?.data?.message || err.message || 'Voice entry darj nahi ho payi.');
     }
@@ -312,17 +326,33 @@ export const KhataScreen = () => {
     }
   };
 
-  // Submit Standard Add Credit
+  // Submit Standard Add New Khata / Credit
   const handleAddCredit = async (e) => {
     e.preventDefault();
+    const cleanMobile = creditForm.customer_mobile.replace(/[^0-9]/g, '').slice(-10);
+    if (cleanMobile.length < 10) {
+      alert('Kripya 10-digit sahi mobile number enter karein.');
+      return;
+    }
+    const cleanName = creditForm.customer_name.trim();
+    if (cleanName.length < 2) {
+      alert('Kripya customer ka naam (kam se kam 2 akshar) enter karein.');
+      return;
+    }
+    const amt = parseFloat(creditForm.amount);
+    if (isNaN(amt) || amt <= 0) {
+      alert('Kripya valid udhar rakam (amount > 0) enter karein.');
+      return;
+    }
+
     setActionLoading(true);
 
     try {
       await khataApi.addCredit({
-        customer_name: creditForm.customer_name.trim(),
-        customer_mobile: creditForm.customer_mobile.trim(),
-        amount: parseFloat(creditForm.amount),
-        notes: creditForm.notes.trim(),
+        customer_name: cleanName,
+        customer_mobile: cleanMobile,
+        amount: amt,
+        notes: creditForm.notes.trim() || 'Naya Khata Account',
         bill_number: creditForm.bill_number.trim(),
         parchi_image_url: creditForm.parchi_image_url || undefined,
       });
@@ -331,9 +361,19 @@ export const KhataScreen = () => {
       setShowAddCreditModal(false);
       setCreditForm({ customer_name: '', customer_mobile: '', amount: '', notes: '', bill_number: '', parchi_image_url: '' });
       await loadKhata(debouncedSearch);
-      if (selectedCustomer) handleOpenCustomer(selectedCustomer);
+      
+      const newCust = {
+        customer_name: cleanName,
+        customer_mobile: cleanMobile,
+        current_balance: amt,
+        outstanding_amount: amt,
+      };
+      setSelectedCustomer(newCust);
+      handleOpenCustomer(newCust);
+      alert(`✅ ${cleanName} ka naya khata ₹${amt} udhar ke saath ban gaya hai!`);
     } catch (err) {
-      alert(err?.response?.data?.message || err.message || 'Udhar entry darj nahi ho payi.');
+      console.error('Add credit error:', err);
+      alert(err?.response?.data?.message || err?.message || 'Naya khata create nahi ho paya. Kripya check karein.');
     } finally {
       setActionLoading(false);
     }
@@ -343,16 +383,21 @@ export const KhataScreen = () => {
   const handleRecordPayment = async (e) => {
     e.preventDefault();
     if (!selectedCustomer) return;
+    const amt = parseFloat(paymentForm.amount);
+    if (isNaN(amt) || amt <= 0) {
+      alert('Kripya sahi jama rakam enter karein.');
+      return;
+    }
+
     setActionLoading(true);
 
     try {
       const phone = selectedCustomer.customer_mobile || selectedCustomer.phone;
       await khataApi.recordPayment(phone, {
         customer_name: selectedCustomer.customer_name || selectedCustomer.name,
-        amount: parseFloat(paymentForm.amount),
+        amount: amt,
         payment_mode: paymentForm.payment_mode,
         notes: paymentForm.notes.trim(),
-        upi_ref_no: paymentForm.upi_ref_no.trim(),
       });
 
       playSoundboxTone('payment');
@@ -364,27 +409,6 @@ export const KhataScreen = () => {
       alert(err?.response?.data?.message || err.message || 'Payment darj nahi ho payi.');
     } finally {
       setActionLoading(false);
-    }
-  };
-
-  // Save Credit Limit
-  const handleSaveCreditLimit = async () => {
-    if (!selectedCustomer) return;
-    const limit = parseFloat(newCreditLimit);
-    if (isNaN(limit) || limit < 0) {
-      alert('Kripya sahi credit seema amount enter karein.');
-      return;
-    }
-
-    try {
-      const phone = selectedCustomer.customer_mobile || selectedCustomer.phone;
-      await khataApi.setCreditLimit(phone, limit);
-      alert(`Customer ki Credit Limit ₹${limit.toLocaleString('en-IN')} set ho gayi hai.`);
-      setShowCreditLimitModal(false);
-      await loadKhata(debouncedSearch);
-      handleOpenCustomer(selectedCustomer);
-    } catch {
-      alert('Credit limit set nahi ho payi.');
     }
   };
 
@@ -412,16 +436,6 @@ export const KhataScreen = () => {
       return d.toDateString() === todayStr || d < new Date();
     }).length;
   }, [customers]);
-
-  // Counter UPI URI
-  const counterUpiUri = useMemo(() => {
-    if (!selectedCustomer) return '';
-    const shopUpi = shop?.upi_id || 'merchant@upi';
-    const shopTitle = encodeURIComponent(shop?.name || 'Hamari Dukan');
-    const bal = selectedCustomer.current_balance || selectedCustomer.outstanding_amount || 100;
-    const mobile = selectedCustomer.customer_mobile || selectedCustomer.phone;
-    return `upi://pay?pa=${shopUpi}&pn=${shopTitle}&am=${bal}&cu=INR&tn=${encodeURIComponent(`Khata_${mobile}`)}`;
-  }, [selectedCustomer, shop]);
 
   return (
     <AppLayout>
@@ -1301,15 +1315,16 @@ export const KhataScreen = () => {
         onClose={() => setShowQRScannerModal(false)}
         onCustomerScanned={(scanned) => {
           setShowQRScannerModal(false);
-          const found = customers.find((c) => (c.customer_mobile || c.phone) === scanned.phone);
+          const cleanPhone = (scanned.phone || '').replace(/[^0-9]/g, '').slice(-10);
+          const found = customers.find((c) => (c.customer_mobile || c.phone || '').includes(cleanPhone));
           if (found) {
             handleOpenCustomer(found);
           } else {
             setCreditForm({
               customer_name: scanned.name || '',
-              customer_mobile: scanned.phone || '',
+              customer_mobile: cleanPhone,
               amount: '',
-              notes: '',
+              notes: 'QR Scanned Customer',
               bill_number: '',
               parchi_image_url: '',
             });

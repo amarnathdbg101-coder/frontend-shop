@@ -20,7 +20,14 @@ export const khataApi = {
   listCustomers: async (search = '') => {
     const params = search ? { search } : {};
     const res = await client.get('/shops/me/khata', { params });
-    return res.data?.data || res.data;
+    const payload = res.data?.data || res.data;
+    if (Array.isArray(payload)) return payload;
+    if (payload && Array.isArray(payload.customers)) return payload.customers;
+    return [];
+  },
+
+  getCustomers: async (search = '') => {
+    return khataApi.listCustomers(search);
   },
 
   // Kisi grahak ki complete passbook / transaction history
@@ -31,33 +38,52 @@ export const khataApi = {
   },
 
   getCustomerKhataHistory: async (mobile) => {
-    const clean = String(mobile).replace(/[^0-9]/g, '').slice(-10);
-    const res = await client.get(`/shops/me/khata/${clean}/statement`);
-    return res.data?.data || res.data;
+    return khataApi.getCustomerHistory(mobile);
+  },
+
+  getStatement: async (mobile) => {
+    return khataApi.getCustomerHistory(mobile);
   },
 
   // Naya udhar likhna (Grahak ko udhar samaan diya) with Idempotency Key
   addCredit: async (creditData) => {
+    const cleanMobile = String(creditData.customer_mobile || creditData.mobile || '')
+      .replace(/[^0-9]/g, '')
+      .slice(-10);
+    
+    const payload = {
+      customer_name: (creditData.customer_name || creditData.name || '').trim(),
+      customer_mobile: cleanMobile,
+      amount: parseFloat(creditData.amount) || 0,
+      notes: (creditData.notes || creditData.description || '').trim(),
+      bill_number: (creditData.bill_number || '').trim(),
+      parchi_image_url: creditData.parchi_image_url || undefined,
+      items_summary: creditData.items_summary || creditData.notes || undefined,
+    };
+
     const key = generateIdempotencyKey();
-    const res = await client.post('/shops/me/khata', creditData, {
+    const res = await client.post('/shops/me/khata', payload, {
       headers: { 'X-Idempotency-Key': key },
     });
     return res.data?.data || res.data;
   },
 
   recordCredit: async (creditData) => {
-    const key = generateIdempotencyKey();
-    const res = await client.post('/shops/me/khata', creditData, {
-      headers: { 'X-Idempotency-Key': key },
-    });
-    return res.data?.data || res.data;
+    return khataApi.addCredit(creditData);
   },
 
   // Grahak ne paise jama kiye (Settlement / Payment received) with Idempotency Key
   recordPayment: async (mobile, paymentData) => {
     const clean = String(mobile).replace(/[^0-9]/g, '').slice(-10);
+    const payload = {
+      customer_name: (paymentData.customer_name || paymentData.name || '').trim(),
+      amount: parseFloat(paymentData.amount) || 0,
+      payment_mode: (paymentData.payment_mode || 'cash').toLowerCase(),
+      notes: (paymentData.notes || paymentData.description || '').trim(),
+    };
+
     const key = generateIdempotencyKey();
-    const res = await client.post(`/shops/me/khata/${clean}/payment`, paymentData, {
+    const res = await client.post(`/shops/me/khata/${clean}/payment`, payload, {
       headers: { 'X-Idempotency-Key': key },
     });
     return res.data?.data || res.data;
