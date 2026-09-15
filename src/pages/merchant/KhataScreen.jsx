@@ -9,7 +9,6 @@ import {
   MessageSquare,
   QrCode,
   Clock,
-  AlertCircle,
   CheckCircle2,
   Calendar,
   Image as ImageIcon,
@@ -19,12 +18,15 @@ import {
   ShieldCheck,
   AlertTriangle,
   X,
-  ExternalLink,
-  DollarSign,
   Share2,
   Zap,
   RotateCcw,
   Sliders,
+  ChevronRight,
+  User,
+  HelpCircle,
+  FileText,
+  CreditCard,
 } from 'lucide-react';
 import { khataApi } from '../../api/khata.api';
 import { uploadApi } from '../../api/upload.api';
@@ -38,15 +40,15 @@ import { getImageUrl } from '../../utils/imageUrl';
 
 const QUICK_AMOUNTS = [50, 100, 200, 500, 1000, 2000];
 const QUICK_ITEMS = [
-  '🥛 Doodh',
-  '🍚 Chini',
-  '🌾 Atta',
-  '🍚 Chawal',
-  '🛢️ Tel',
-  '🍪 Biscuits',
-  '🥬 Sabji',
-  '📦 Ration',
-  '⚡ Daily Udhar',
+  'Doodh (Milk)',
+  'Chini (Sugar)',
+  'Atta (Flour)',
+  'Chawal (Rice)',
+  'Tel (Oil)',
+  'Biscuits',
+  'Sabji',
+  'Ration Pack',
+  'Daily Need',
 ];
 
 export const KhataScreen = () => {
@@ -55,7 +57,7 @@ export const KhataScreen = () => {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all'); // 'all' | 'due_today' | '0_30' | '30_60' | '60_plus'
+  const [selectedFilter, setSelectedFilter] = useState('all'); // 'all' | 'due_today' | 'high_due'
 
   // Selected customer passbook
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -70,7 +72,7 @@ export const KhataScreen = () => {
   const [showCreditLimitModal, setShowCreditLimitModal] = useState(false);
   const [viewParchiUrl, setViewParchiUrl] = useState(null);
 
-  // ⚡ Express Quick Udhar Modal State
+  // Express Quick Udhar Modal State
   const [showExpressModal, setShowExpressModal] = useState(false);
   const [expressCustomer, setExpressCustomer] = useState(null);
   const [expressAmount, setExpressAmount] = useState('');
@@ -91,8 +93,6 @@ export const KhataScreen = () => {
     bill_number: '',
     parchi_image_url: '',
   });
-  const [parchiUploading, setParchiUploading] = useState(false);
-  const [parchiPreview, setParchiPreview] = useState(null);
 
   const [paymentForm, setPaymentForm] = useState({
     amount: '',
@@ -102,11 +102,9 @@ export const KhataScreen = () => {
   });
 
   const [newCreditLimit, setNewCreditLimit] = useState('');
-
   const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  const debouncedSearch = useDebounce(search, 300);
+  const debouncedSearch = useDebounce(search, 250);
 
   // Load Khata Summary & Customer list
   const loadKhata = useCallback(async (query = '') => {
@@ -117,13 +115,19 @@ export const KhataScreen = () => {
         khataApi.listCustomers(query).catch(() => []),
       ]);
       setSummary(sumRes || { total_outstanding_amount: 0, total_customers: 0 });
-      setCustomers(Array.isArray(custRes) ? custRes : (custRes?.customers || []));
+      const list = Array.isArray(custRes) ? custRes : (custRes?.customers || []);
+      setCustomers(list);
+
+      // Auto-select first customer if none selected on desktop
+      if (list.length > 0 && !selectedCustomer) {
+        handleOpenCustomer(list[0]);
+      }
     } catch (err) {
       console.error('Khata load error:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedCustomer]);
 
   useEffect(() => {
     loadKhata(debouncedSearch);
@@ -144,7 +148,7 @@ export const KhataScreen = () => {
     }
   };
 
-  // Open ⚡ Express Quick Udhar Modal
+  // Open Express Quick Udhar Modal
   const handleOpenExpressModal = (cust) => {
     setExpressCustomer(cust);
     setExpressAmount('');
@@ -219,43 +223,16 @@ export const KhataScreen = () => {
       alert('Galti sudhar di gayi hai aur balance restore ho gaya hai.');
       loadKhata(debouncedSearch);
       if (selectedCustomer) handleOpenCustomer(selectedCustomer);
-    } catch (err) {
+    } catch {
       alert('Undo nahi ho paya. Kripya passbook me jakar check karein.');
     }
   };
 
-  // Parchi File Upload
-  const handleParchiFileChange = async (e, isExpress = false) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      if (isExpress) setExpressUploading(true);
-      else setParchiUploading(true);
-
-      const res = await uploadApi.uploadImage(file);
-      const url = res.url || res.image_url || res.data?.url || '';
-
-      if (isExpress) {
-        setExpressParchiUrl(url);
-      } else {
-        setParchiPreview(URL.createObjectURL(file));
-        setCreditForm((prev) => ({ ...prev, parchi_image_url: url }));
-      }
-    } catch (err) {
-      console.error('Parchi upload failed:', err);
-      alert('Parchi upload nahi ho payi. Dobara koshish karein.');
-    } finally {
-      if (isExpress) setExpressUploading(false);
-      else setParchiUploading(false);
-    }
-  };
-
-  // ⚡ Submit Express Quick Credit
+  // Submit Express Quick Credit
   const handleExpressSubmit = async (type = 'CREDIT') => {
     const numAmt = parseFloat(expressAmount);
     if (!numAmt || numAmt <= 0) {
-      alert('Kripya sahi rakam (amount > 0) chunein ya enter karein.');
+      alert('Kripya sahi rakam (amount > ₹0) chunein ya enter karein.');
       return;
     }
 
@@ -264,7 +241,6 @@ export const KhataScreen = () => {
     const creditLimit = expressCustomer.credit_limit || 0;
     const currentBal = expressCustomer.current_balance || expressCustomer.outstanding_amount || 0;
 
-    // Over-limit protection
     if (type === 'CREDIT' && creditLimit > 0 && currentBal + numAmt > creditLimit) {
       const confirmExceed = window.confirm(
         `⚠️ Credit Limit Alert: ${custName} ki Seema ₹${creditLimit.toLocaleString('en-IN')} hai. Naya udhar milakar kul baaki ₹${(currentBal + numAmt).toLocaleString('en-IN')} ho jayega.\n\nKya aap phir bhi udhar likhna chahte hain?`
@@ -315,7 +291,6 @@ export const KhataScreen = () => {
   // Submit Standard Add Credit
   const handleAddCredit = async (e) => {
     e.preventDefault();
-    setError('');
     setActionLoading(true);
 
     try {
@@ -331,11 +306,10 @@ export const KhataScreen = () => {
       playSoundboxTone('credit');
       setShowAddCreditModal(false);
       setCreditForm({ customer_name: '', customer_mobile: '', amount: '', notes: '', bill_number: '', parchi_image_url: '' });
-      setParchiPreview(null);
       await loadKhata(debouncedSearch);
       if (selectedCustomer) handleOpenCustomer(selectedCustomer);
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Udhar entry darj nahi ho payi.');
+      alert(err?.response?.data?.message || err.message || 'Udhar entry darj nahi ho payi.');
     } finally {
       setActionLoading(false);
     }
@@ -345,7 +319,6 @@ export const KhataScreen = () => {
   const handleRecordPayment = async (e) => {
     e.preventDefault();
     if (!selectedCustomer) return;
-    setError('');
     setActionLoading(true);
 
     try {
@@ -364,7 +337,7 @@ export const KhataScreen = () => {
       await loadKhata(debouncedSearch);
       handleOpenCustomer(selectedCustomer);
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Payment darj nahi ho payi.');
+      alert(err?.response?.data?.message || err.message || 'Payment darj nahi ho payi.');
     } finally {
       setActionLoading(false);
     }
@@ -386,7 +359,7 @@ export const KhataScreen = () => {
       setShowCreditLimitModal(false);
       await loadKhata(debouncedSearch);
       handleOpenCustomer(selectedCustomer);
-    } catch (err) {
+    } catch {
       alert('Credit limit set nahi ho payi.');
     }
   };
@@ -401,26 +374,10 @@ export const KhataScreen = () => {
         const d = new Date(cust.promise_to_pay_date);
         return d.toDateString() === todayStr || d < new Date();
       }
-      if (selectedFilter === '0_30') return bal > 0 && bal <= 2000;
-      if (selectedFilter === '30_60') return bal > 2000 && bal <= 5000;
-      if (selectedFilter === '60_plus') return bal > 5000;
+      if (selectedFilter === 'high_due') return bal >= 2000;
       return true;
     });
   }, [customers, selectedFilter]);
-
-  // Instant Search Suggestions
-  const searchMatches = useMemo(() => {
-    if (!search.trim() || !customers.length) return [];
-    const q = search.trim().toLowerCase();
-    return customers
-      .filter((c) => (c.customer_name || c.name || '').toLowerCase().includes(q) || (c.customer_mobile || c.phone || '').includes(q))
-      .slice(0, 4);
-  }, [search, customers]);
-
-  // Recent top 6 customers for 1-click pick
-  const recentCustomers = useMemo(() => {
-    return customers.slice(0, 6);
-  }, [customers]);
 
   const dueTodayCount = useMemo(() => {
     const todayStr = new Date().toDateString();
@@ -444,334 +401,272 @@ export const KhataScreen = () => {
 
   return (
     <AppLayout>
-      <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-        {/* Header with KPI and Fast Scan */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-              <BookOpen className="w-7 h-7 text-indigo-600" />
-              Digital Khata & Bahi-Khata
-            </h1>
-            <p className="text-sm text-gray-500 font-medium">
-              Zero-dispute ledger, instant 1-tap udhar entry, aur automatic WhatsApp reminders
-            </p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Top Header Card */}
+        <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-100">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                  Bahi-Khata & Ledger
+                </h1>
+                <p className="text-xs sm:text-sm text-gray-500 font-medium">
+                  Instant 1-Tap udhar, WhatsApp reminders, aur zero-dispute audit trail
+                </p>
+              </div>
+            </div>
+
+            {/* Top Action Buttons */}
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => setShowQRScannerModal(true)}
+                className="flex items-center gap-2 px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs sm:text-sm rounded-xl border border-gray-200 transition"
+              >
+                <QrCode className="w-4 h-4 text-gray-600" />
+                <span>Scan QR</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setCreditForm({ customer_name: '', customer_mobile: '', amount: '', notes: '', bill_number: '', parchi_image_url: '' });
+                  setShowAddCreditModal(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-md shadow-red-200"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Naya Khata</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowQRScannerModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold rounded-xl hover:bg-indigo-100 transition shadow-sm"
-              title="Scan Customer Mera Khata QR"
-            >
-              <QrCode className="w-5 h-5 text-indigo-600" />
-              <span>Scan QR</span>
-            </button>
+          {/* KPI Summary Strip */}
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-5 pt-5 border-t border-gray-100">
+            <div className="bg-red-50/70 border border-red-100 rounded-xl p-3.5">
+              <p className="text-[11px] font-extrabold text-red-600 uppercase tracking-wider">Kul Udhar Baki</p>
+              <p className="text-lg sm:text-2xl font-black text-red-700 mt-0.5">
+                ₹{(summary?.total_outstanding_amount ?? 0).toLocaleString('en-IN')}
+              </p>
+            </div>
 
-            <button
-              onClick={() => {
-                setCreditForm({ customer_name: '', customer_mobile: '', amount: '', notes: '', bill_number: '', parchi_image_url: '' });
-                setParchiPreview(null);
-                setShowAddCreditModal(true);
-              }}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 text-white font-bold rounded-xl hover:from-red-700 hover:to-rose-700 transition shadow-md shadow-red-200"
-            >
-              <Plus className="w-5 h-5" />
-              <span>+ Naya Panna</span>
-            </button>
+            <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3.5">
+              <p className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider">Total Accounts</p>
+              <p className="text-lg sm:text-2xl font-black text-blue-700 mt-0.5">
+                {summary?.total_customers ?? customers.length}
+              </p>
+            </div>
+
+            <div className="bg-amber-50/70 border border-amber-100 rounded-xl p-3.5">
+              <p className="text-[11px] font-extrabold text-amber-700 uppercase tracking-wider">📅 Aaj Due</p>
+              <p className="text-lg sm:text-2xl font-black text-amber-800 mt-0.5">{dueTodayCount}</p>
+            </div>
           </div>
         </div>
 
-        {/* Top KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-gradient-to-br from-red-50 to-rose-50 border border-red-200/80 rounded-2xl p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black tracking-wider text-red-700 uppercase">Total Market Udhar Baki</span>
-              <span className="p-2 bg-red-100 rounded-xl text-red-600">
-                <ArrowDownLeft className="w-5 h-5" />
-              </span>
+        {/* Search & Filter Bar */}
+        <div className="bg-white border border-gray-200/90 rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="relative flex-1 w-full">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search customer by name or phone..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-medium focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition outline-none"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
-            <p className="text-3xl font-black text-red-700 mt-2">
-              ₹{(summary?.total_outstanding_amount ?? 0).toLocaleString('en-IN')}
-            </p>
-            <p className="text-xs text-red-600/80 font-semibold mt-1">Dukandar ka baki hisab</p>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => setSelectedFilter('all')}
+                className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                  selectedFilter === 'all'
+                    ? 'bg-gray-900 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                All ({customers.length})
+              </button>
+
+              <button
+                onClick={() => setSelectedFilter('due_today')}
+                className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                  selectedFilter === 'due_today'
+                    ? 'bg-amber-600 text-white shadow-sm'
+                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                }`}
+              >
+                📅 Due Today ({dueTodayCount})
+              </button>
+
+              <button
+                onClick={() => setSelectedFilter('high_due')}
+                className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                  selectedFilter === 'high_due'
+                    ? 'bg-red-600 text-white shadow-sm'
+                    : 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200'
+                }`}
+              >
+                &gt; ₹2k
+              </button>
+            </div>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200/80 rounded-2xl p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black tracking-wider text-blue-700 uppercase">Total Khata Customers</span>
-              <span className="p-2 bg-blue-100 rounded-xl text-blue-600">
-                <ShieldCheck className="w-5 h-5" />
+          {/* Quick Pick Horizontal Strip */}
+          {customers.length > 0 && !search && (
+            <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-1 scrollbar-none">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
+                <Zap className="w-3 h-3 text-amber-500 fill-amber-500" />
+                Quick Pick:
               </span>
-            </div>
-            <p className="text-3xl font-black text-blue-700 mt-2">
-              {summary?.total_customers ?? customers.length}
-            </p>
-            <p className="text-xs text-blue-600/80 font-semibold mt-1">Active ledger accounts</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black tracking-wider text-amber-800 uppercase">📅 Aaj Ke Promises Due</span>
-              <span className="p-2 bg-amber-100 rounded-xl text-amber-700">
-                <Calendar className="w-5 h-5" />
-              </span>
-            </div>
-            <p className="text-3xl font-black text-amber-800 mt-2">{dueTodayCount}</p>
-            <p className="text-xs text-amber-700 font-semibold mt-1">Target repayment date is today</p>
-          </div>
-        </div>
-
-        {/* ⚡ Quick Pick Customer Bar (1-Click Select) */}
-        {recentCustomers.length > 0 && !search && (
-          <div className="bg-white border border-gray-200/80 rounded-2xl p-4 shadow-sm space-y-2">
-            <span className="text-xs font-bold text-gray-500 flex items-center gap-1.5 uppercase tracking-wider">
-              <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-              ⚡ Quick Pick Customer (1-Click Instant Udhar):
-            </span>
-            <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
-              {recentCustomers.map((cust) => {
+              {customers.slice(0, 8).map((cust) => {
                 const bal = cust.current_balance || cust.outstanding_amount || 0;
                 const name = cust.customer_name || cust.name || 'Customer';
                 return (
                   <button
                     key={cust.id || cust.customer_mobile || cust.phone}
                     onClick={() => handleOpenExpressModal(cust)}
-                    className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-gray-50 hover:bg-amber-50/70 border border-gray-200 hover:border-amber-300 transition shrink-0 group text-left"
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 hover:bg-amber-50 border border-gray-200 hover:border-amber-300 text-left transition shrink-0 group"
                   >
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-xs group-hover:scale-105 transition">
+                    <div className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-[10px]">
                       {name.charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-900 group-hover:text-amber-800">{name}</p>
-                      <p className={`text-[11px] font-extrabold ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        ₹{bal.toLocaleString('en-IN')}
-                      </p>
-                    </div>
+                    <span className="text-xs font-bold text-gray-800 group-hover:text-amber-900">{name}</span>
+                    <span className={`text-[11px] font-black ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      ₹{bal.toLocaleString('en-IN')}
+                    </span>
                   </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Search & Dynamic Suggestions Bar */}
-        <div className="relative">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search customer by name, mobile, or ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
-              />
-              {search && (
-                <button
-                  onClick={() => setSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-
-            {/* Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1">
-              <button
-                onClick={() => setSelectedFilter('all')}
-                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                  selectedFilter === 'all'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                All ({customers.length})
-              </button>
-              <button
-                onClick={() => setSelectedFilter('due_today')}
-                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                  selectedFilter === 'due_today'
-                    ? 'bg-amber-600 text-white shadow-sm'
-                    : 'bg-white text-amber-700 border border-amber-200 hover:bg-amber-50'
-                }`}
-              >
-                📅 Due Today ({dueTodayCount})
-              </button>
-              <button
-                onClick={() => setSelectedFilter('0_30')}
-                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                  selectedFilter === '0_30'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                ₹0 - ₹2k
-              </button>
-              <button
-                onClick={() => setSelectedFilter('60_plus')}
-                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-                  selectedFilter === '60_plus'
-                    ? 'bg-red-600 text-white shadow-sm'
-                    : 'bg-white text-red-600 border border-red-200 hover:bg-red-50'
-                }`}
-              >
-                &gt; ₹5k (High Due)
-              </button>
-            </div>
-          </div>
-
-          {/* Instant Search Matches Dropdown */}
-          {searchMatches.length > 0 && search.trim().length > 0 && (
-            <div className="absolute z-20 top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-xl p-2 divide-y divide-gray-100">
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-3 py-1">
-                ⚡ Instant Matches (Tap for Express Udhar):
-              </p>
-              {searchMatches.map((m) => {
-                const bal = m.current_balance || m.outstanding_amount || 0;
-                const name = m.customer_name || m.name;
-                const phone = m.customer_mobile || m.phone;
-                return (
-                  <div
-                    key={m.id || phone}
-                    onClick={() => {
-                      setSearch('');
-                      handleOpenExpressModal(m);
-                    }}
-                    className="flex items-center justify-between p-3 hover:bg-indigo-50/60 rounded-xl cursor-pointer transition"
-                  >
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">{name}</p>
-                      <p className="text-xs text-gray-500 font-medium">📞 +91 {phone}</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-black ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                        ₹{bal.toLocaleString('en-IN')}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs font-bold px-2.5 py-1 bg-amber-500 text-white rounded-lg shadow-sm">
-                        <Zap className="w-3 h-3 fill-white" />
-                        <span>Quick Entry</span>
-                      </span>
-                    </div>
-                  </div>
                 );
               })}
             </div>
           )}
         </div>
 
-        {/* Main Content Layout: Customer List + Passbook Drawer */}
+        {/* Master-Detail Split Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left: Customer Cards List */}
-          <div className="lg:col-span-5 space-y-3">
+          {/* Left Column: Customer Accounts List */}
+          <div className="lg:col-span-5 space-y-2.5">
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
             ) : filteredCustomers.length === 0 ? (
-              <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center space-y-3">
-                <BookOpen className="w-12 h-12 text-gray-300 mx-auto" />
-                <p className="text-base font-bold text-gray-700">Koi Khata Panna Nahi Mila</p>
+              <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center space-y-2">
+                <BookOpen className="w-10 h-10 text-gray-300 mx-auto" />
+                <p className="text-sm font-bold text-gray-700">Koi Khata Account Nahi Mila</p>
                 <p className="text-xs text-gray-400">
-                  {selectedFilter === 'due_today'
-                    ? 'Aaj kisi customer ka repayment date schedule nahi hai.'
-                    : 'Naya udhar likhne ke liye "+ Naya Panna" par click karein.'}
+                  Naya khata shuru karne ke liye upar "+ Naya Khata" dabayein.
                 </p>
               </div>
             ) : (
               filteredCustomers.map((cust) => {
                 const bal = cust.current_balance || cust.outstanding_amount || 0;
-                const isSelected = selectedCustomer?.id === cust.id || (selectedCustomer && (selectedCustomer.customer_mobile || selectedCustomer.phone) === (cust.customer_mobile || cust.phone));
+                const isSelected =
+                  selectedCustomer &&
+                  (selectedCustomer.id === cust.id ||
+                    (selectedCustomer.customer_mobile || selectedCustomer.phone) === (cust.customer_mobile || cust.phone));
+                const phone = cust.customer_mobile || cust.phone;
+                const name = cust.customer_name || cust.name || 'Customer';
                 const ptpDate = cust.promise_to_pay_date ? new Date(cust.promise_to_pay_date) : null;
                 const isDueToday = ptpDate && ptpDate.toDateString() === new Date().toDateString() && bal > 0;
                 const isOverdue = ptpDate && ptpDate < new Date() && bal > 0;
-                const phone = cust.customer_mobile || cust.phone;
-                const name = cust.customer_name || cust.name;
 
                 return (
                   <div
                     key={cust.id || phone}
-                    className={`bg-white border rounded-2xl p-4 transition shadow-sm hover:shadow-md ${
+                    onClick={() => handleOpenCustomer(cust)}
+                    className={`bg-white border rounded-2xl p-4 transition-all cursor-pointer shadow-sm relative overflow-hidden ${
                       isSelected
-                        ? 'border-indigo-600 ring-2 ring-indigo-100 bg-indigo-50/20'
-                        : 'border-gray-200/80 hover:border-gray-300'
+                        ? 'border-indigo-600 ring-2 ring-indigo-50 bg-indigo-50/15'
+                        : 'border-gray-200/90 hover:border-gray-300 hover:shadow'
                     }`}
                   >
+                    {/* Selected Active Bar Indicator */}
+                    {isSelected && <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-600" />}
+
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 cursor-pointer" onClick={() => handleOpenCustomer(cust)}>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-bold text-gray-900 text-sm">{name}</h3>
-                          {cust.is_registered && (
-                            <span className="flex items-center gap-0.5 text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-md">
-                              <ShieldCheck className="w-3 h-3" />
-                              App
-                            </span>
-                          )}
-                          <span className="text-[10px] font-extrabold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-md">
-                            Score: {cust.trust_score || 750}
-                          </span>
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gray-100 text-gray-700 font-black flex items-center justify-center text-sm shrink-0">
+                          {name.charAt(0).toUpperCase()}
                         </div>
 
-                        <p className="text-xs text-gray-500 font-medium mt-0.5">📞 +91 {phone}</p>
-
-                        {/* Promise / Overdue badge */}
-                        {ptpDate && bal > 0 && (
-                          <div className="mt-2 flex items-center gap-1.5">
-                            <span
-                              className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md ${
-                                isOverdue
-                                  ? 'bg-red-100 text-red-700'
-                                  : isDueToday
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-blue-50 text-blue-700'
-                              }`}
-                            >
-                              <Calendar className="w-3 h-3" />
-                              {isOverdue ? 'Overdue: ' : isDueToday ? 'Due Today: ' : 'Promise: '}
-                              {ptpDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                            </span>
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h3 className="font-bold text-gray-900 text-sm">{name}</h3>
+                            {cust.is_registered && (
+                              <span className="text-[9px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded">
+                                App User
+                              </span>
+                            )}
                           </div>
-                        )}
+                          <p className="text-xs text-gray-500 font-medium">📞 +91 {phone}</p>
+
+                          {ptpDate && bal > 0 && (
+                            <div className="mt-1.5">
+                              <span
+                                className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md ${
+                                  isOverdue
+                                    ? 'bg-red-100 text-red-700'
+                                    : isDueToday
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-blue-50 text-blue-700'
+                                }`}
+                              >
+                                <Calendar className="w-3 h-3" />
+                                {isOverdue ? 'Overdue: ' : isDueToday ? 'Due Today: ' : 'Promise: '}
+                                {ptpDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="text-right">
-                        <p className={`text-lg font-black ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      <div className="text-right shrink-0">
+                        <p className={`text-base font-black ${bal > 0 ? 'text-red-600' : 'text-green-600'}`}>
                           ₹{bal.toLocaleString('en-IN')}
                         </p>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                          {bal > 0 ? 'Udhar Baki' : 'Clear'}
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                          {bal > 0 ? 'Udhar Baki' : 'Chukta'}
                         </p>
                       </div>
                     </div>
 
-                    {/* Action Bar */}
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100">
+                    {/* 1-Tap Action Buttons Row */}
+                    <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-gray-100">
                       <button
-                        onClick={() => handleOpenExpressModal(cust)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenExpressModal(cust);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl border border-amber-200 transition"
                       >
                         <Zap className="w-3.5 h-3.5 fill-amber-600 text-amber-600" />
                         <span>⚡ 1-Tap Entry</span>
                       </button>
 
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           const text = encodeURIComponent(
-                            `Namaste ${name} ji! ${shop?.name || 'Hamari Dukan'} se aapka khata baki kul ₹${bal.toLocaleString('en-IN')} hai. Kripya samay par chukta karein. Dhanyawad!`
+                            `Namaste ${name} ji! ${shop?.name || 'Hamari Dukan'} se aapka baki hisab ₹${bal.toLocaleString('en-IN')} hai. Kripya payment karein. Dhanyawad!`
                           );
                           window.open(`https://wa.me/91${phone.replace(/\D/g, '').slice(-10)}?text=${text}`, '_blank');
                         }}
                         className="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-green-50 hover:bg-green-100 text-green-700 font-bold text-xs rounded-xl border border-green-200 transition"
-                        title="Send WhatsApp Reminder"
+                        title="WhatsApp Reminder"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
                         <span>WhatsApp</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleOpenCustomer(cust)}
-                        className="flex items-center justify-center gap-1.5 py-1.5 px-3 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold text-xs rounded-xl border border-gray-200 transition"
-                      >
-                        <BookOpen className="w-3.5 h-3.5" />
-                        <span>Panna</span>
                       </button>
                     </div>
                   </div>
@@ -780,30 +675,30 @@ export const KhataScreen = () => {
             )}
           </div>
 
-          {/* Right: Detailed Customer Passbook View */}
+          {/* Right Column: Customer Passbook / Bahi-Khata Panna */}
           <div className="lg:col-span-7">
             {!selectedCustomer ? (
               <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center space-y-3">
-                <BookOpen className="w-14 h-14 text-indigo-200 mx-auto" />
-                <h3 className="text-lg font-bold text-gray-800">Customer Panna Chunein</h3>
-                <p className="text-sm text-gray-500 max-w-sm mx-auto">
-                  Left side se kisi bhi customer par click karein unka complete bahi-khata, parchi saboot, aur online payments dekhne ke liye.
+                <BookOpen className="w-12 h-12 text-indigo-200 mx-auto" />
+                <h3 className="text-base font-bold text-gray-800">Customer Panna Select Karein</h3>
+                <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                  Left side se kisi bhi customer par click karein unka complete bahi-khata dekhne ke liye.
                 </p>
               </div>
             ) : (
-              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6">
+              <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-sm space-y-5">
                 {/* Panna Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="text-xl font-black text-gray-900">
+                      <h2 className="text-lg sm:text-xl font-black text-gray-900">
                         {selectedCustomer.customer_name || selectedCustomer.name}
                       </h2>
-                      <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg">
-                        Trust Score: {selectedCustomer.trust_score || 750}
+                      <span className="text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
+                        Trust: {selectedCustomer.trust_score || 750}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 font-medium mt-0.5">
+                    <p className="text-xs text-gray-500 font-medium">
                       📞 +91 {selectedCustomer.customer_mobile || selectedCustomer.phone}
                     </p>
                   </div>
@@ -844,10 +739,12 @@ export const KhataScreen = () => {
                 </div>
 
                 {/* Big Balance Banner */}
-                <div className="bg-gradient-to-r from-red-500/10 via-rose-500/5 to-transparent border border-red-200 rounded-2xl p-5 flex items-center justify-between">
+                <div className="bg-gradient-to-r from-red-50 to-rose-50/40 border border-red-200/80 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <span className="text-xs font-black tracking-wider text-red-700 uppercase">KUL BAKI HISAB</span>
-                    <p className="text-3xl font-black text-red-600 mt-1">
+                    <span className="text-[11px] font-black tracking-wider text-red-700 uppercase">
+                      KUL BAKI (CUSTOMER OWES)
+                    </span>
+                    <p className="text-3xl font-black text-red-600 mt-0.5">
                       ₹{(selectedCustomer.current_balance || selectedCustomer.outstanding_amount || 0).toLocaleString('en-IN')}
                     </p>
                     {selectedCustomer.credit_limit > 0 && (
@@ -857,10 +754,10 @@ export const KhataScreen = () => {
                     )}
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleOpenExpressModal(selectedCustomer)}
-                      className="flex items-center gap-1.5 px-4 py-2.5 bg-amber-500 text-white font-bold text-xs rounded-xl hover:bg-amber-600 transition shadow-sm"
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-sm"
                     >
                       <Zap className="w-4 h-4 fill-white" />
                       <span>⚡ 1-Tap Entry</span>
@@ -868,7 +765,7 @@ export const KhataScreen = () => {
 
                     <button
                       onClick={() => setShowRecordPaymentModal(true)}
-                      className="flex items-center gap-1.5 px-4 py-2.5 bg-green-600 text-white font-bold text-xs rounded-xl hover:bg-green-700 transition shadow-sm"
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm rounded-xl transition shadow-sm"
                     >
                       <ArrowUpRight className="w-4 h-4" />
                       <span>Jama (Paise Mile)</span>
@@ -876,36 +773,38 @@ export const KhataScreen = () => {
                   </div>
                 </div>
 
-                {/* Transactions Timeline */}
+                {/* Passbook Transactions List */}
                 <div className="space-y-3">
-                  <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-indigo-600" />
-                    Bahi-Khata Panna History
-                  </h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-indigo-600" />
+                      Passbook Transactions History
+                    </h3>
+                    <span className="text-xs text-gray-400 font-medium">
+                      {customerHistory?.transactions?.length || 0} Entries
+                    </span>
+                  </div>
 
                   {loadingHistory ? (
                     <SkeletonRow />
                   ) : !customerHistory?.transactions || customerHistory.transactions.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400 text-xs">
+                    <div className="text-center py-10 text-gray-400 text-xs bg-gray-50 rounded-2xl border border-gray-100">
                       Is khate me abhi koi transaction record nahi hai.
                     </div>
                   ) : (
-                    <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
+                    <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
                       {customerHistory.transactions.map((tx) => {
                         const isCredit = tx.type === 'GIVE_CREDIT' || tx.type === 'CREDIT';
                         const isPayment = tx.type === 'RECEIVE_PAYMENT' || tx.type === 'PAYMENT';
-                        const hasDispute = tx.dispute_status === 'PENDING' || tx.status === 'DISPUTED';
 
                         return (
                           <div
                             key={tx.id}
-                            className={`p-3.5 rounded-xl border transition flex items-start justify-between gap-3 ${
-                              hasDispute ? 'bg-red-50/60 border-red-200' : 'bg-gray-50/70 border-gray-100 hover:bg-gray-50'
-                            }`}
+                            className="p-3.5 rounded-xl border border-gray-100 hover:border-gray-200 bg-gray-50/60 hover:bg-gray-50 transition flex items-start justify-between gap-3"
                           >
                             <div className="flex items-start gap-3">
                               <div
-                                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                                className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                                   isCredit ? 'bg-red-100 text-red-600' : isPayment ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-700'
                                 }`}
                               >
@@ -929,7 +828,6 @@ export const KhataScreen = () => {
                                   <p className="text-[11px] text-gray-400">Bill #{tx.bill_number}</p>
                                 )}
 
-                                {/* Parchi Attachment preview button */}
                                 {tx.parchi_image_url && (
                                   <button
                                     onClick={() => setViewParchiUrl(tx.parchi_image_url)}
@@ -942,7 +840,7 @@ export const KhataScreen = () => {
                               </div>
                             </div>
 
-                            <div className="text-right">
+                            <div className="text-right shrink-0">
                               <p className={`text-sm font-black ${isCredit ? 'text-red-600' : 'text-green-600'}`}>
                                 {isCredit ? `+₹${tx.amount}` : `-₹${tx.amount}`}
                               </p>
@@ -963,7 +861,7 @@ export const KhataScreen = () => {
 
         {/* 5-Second Floating Undo Banner */}
         {undoToast && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 animate-in fade-in">
             <div>
               <p className="text-xs font-bold text-gray-300">
                 {undoToast.type === 'CREDIT' ? 'Udhar Darj Hua' : 'Jama Darj Hua'} ✅
@@ -987,9 +885,8 @@ export const KhataScreen = () => {
 
         {/* MODAL 1: ⚡ EXPRESS QUICK UDHAR MODAL */}
         {showExpressModal && expressCustomer && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 border border-gray-100">
-              {/* Header */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-gray-100">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-black shadow-md shadow-amber-200">
@@ -1008,8 +905,8 @@ export const KhataScreen = () => {
                 </button>
               </div>
 
-              {/* Customer Identity Confirmation */}
-              <div className="bg-gray-50 rounded-2xl p-3.5 flex items-center justify-between border border-gray-200/80">
+              {/* Customer Identity Card */}
+              <div className="bg-gray-50 rounded-2xl p-3.5 flex items-center justify-between border border-gray-200">
                 <div>
                   <p className="text-sm font-bold text-gray-900">
                     {expressCustomer.customer_name || expressCustomer.name}
@@ -1037,9 +934,9 @@ export const KhataScreen = () => {
                 />
               </div>
 
-              {/* Quick Amount Preset Chips (+50, +100, +200, +500, +1000) */}
+              {/* Quick Amount Preset Chips */}
               <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">⚡ Quick Amount:</span>
+                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">⚡ Quick Amount (1-Tap):</span>
                 <div className="flex flex-wrap gap-2">
                   {QUICK_AMOUNTS.map((amt) => (
                     <button
@@ -1057,22 +954,21 @@ export const KhataScreen = () => {
                 </div>
               </div>
 
-              {/* Quick Item Chips (Zero Typing) */}
+              {/* Quick Item Chips */}
               <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">📦 Samaan (Bina Type Kiye):</span>
+                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">📦 Samaan (Zero Typing):</span>
                 <div className="flex flex-wrap gap-1.5">
                   {QUICK_ITEMS.map((item) => {
-                    const clean = item.replace(/^[^\w\s]+/, '').trim();
-                    const isSelected = expressSelectedItems.includes(clean);
+                    const isSelected = expressSelectedItems.includes(item);
                     return (
                       <button
                         key={item}
                         type="button"
                         onClick={() => {
                           if (isSelected) {
-                            setExpressSelectedItems((prev) => prev.filter((i) => i !== clean));
+                            setExpressSelectedItems((prev) => prev.filter((i) => i !== item));
                           } else {
-                            setExpressSelectedItems((prev) => [...prev, clean]);
+                            setExpressSelectedItems((prev) => [...prev, item]);
                           }
                         }}
                         className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition ${
@@ -1088,12 +984,12 @@ export const KhataScreen = () => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* 2 Big Action Buttons */}
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <button
                   onClick={() => handleExpressSubmit('CREDIT')}
                   disabled={actionLoading || !expressAmount || parseFloat(expressAmount) <= 0}
-                  className="flex items-center justify-center gap-2 py-3.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-black text-sm rounded-2xl transition shadow-lg shadow-red-200"
+                  className="flex items-center justify-center gap-2 py-3.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-black text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-red-200"
                 >
                   <ArrowDownLeft className="w-5 h-5" />
                   <span>Udhar Diya (+₹{expressAmount || 0})</span>
@@ -1102,7 +998,7 @@ export const KhataScreen = () => {
                 <button
                   onClick={() => handleExpressSubmit('PAYMENT')}
                   disabled={actionLoading || !expressAmount || parseFloat(expressAmount) <= 0}
-                  className="flex items-center justify-center gap-2 py-3.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-black text-sm rounded-2xl transition shadow-lg shadow-green-200"
+                  className="flex items-center justify-center gap-2 py-3.5 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-black text-xs sm:text-sm rounded-2xl transition shadow-lg shadow-green-200"
                 >
                   <ArrowUpRight className="w-5 h-5" />
                   <span>Jama Liya (-₹{expressAmount || 0})</span>
@@ -1112,9 +1008,9 @@ export const KhataScreen = () => {
           </div>
         )}
 
-        {/* MODAL 2: LIVE COUNTER UPI QR MODAL */}
+        {/* MODAL 2: COUNTER UPI QR */}
         {showCounterUpiModal && selectedCustomer && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-gray-900 text-base">Counter UPI QR Code</h3>
@@ -1126,22 +1022,22 @@ export const KhataScreen = () => {
                 </button>
               </div>
 
-              <p className="text-xs text-gray-500 font-medium">
+              <p className="text-xs text-gray-500">
                 Customer ko scan karayein. Payment aate hi hisab update karein.
               </p>
 
-              <div className="p-4 bg-white border-2 border-green-500 rounded-2xl inline-block shadow-inner">
+              <div className="p-4 bg-white border-2 border-green-500 rounded-2xl inline-block">
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(counterUpiUri)}&size=200x200`}
                   alt="Counter UPI QR"
-                  className="w-48 h-48 mx-auto"
+                  className="w-44 h-44 mx-auto"
                 />
               </div>
 
               <div>
                 <p className="font-black text-gray-900 text-base">{shop?.name || 'Hamari Dukan'}</p>
-                <p className="text-xs text-gray-500 font-semibold">{shop?.upi_id || 'merchant@upi'}</p>
-                <p className="text-xl font-black text-green-600 mt-2">
+                <p className="text-xs text-gray-500">{shop?.upi_id || 'merchant@upi'}</p>
+                <p className="text-xl font-black text-green-600 mt-1">
                   ₹{(selectedCustomer.current_balance || selectedCustomer.outstanding_amount || 0).toLocaleString('en-IN')}
                 </p>
               </div>
@@ -1150,7 +1046,7 @@ export const KhataScreen = () => {
                 onClick={() => setShowCounterUpiModal(false)}
                 className="w-full py-2.5 bg-gray-900 text-white font-bold text-xs rounded-xl"
               >
-                Close
+                Done
               </button>
             </div>
           </div>
@@ -1162,7 +1058,7 @@ export const KhataScreen = () => {
             <div className="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
               <h3 className="font-bold text-gray-900 text-base">Set Credit Limit (Seema)</h3>
               <p className="text-xs text-gray-500">
-                {selectedCustomer.customer_name || selectedCustomer.name} ke liye maximum udhar limit set karein taaki over-crediting se bacha ja sake.
+                {selectedCustomer.customer_name || selectedCustomer.name} ke liye maximum udhar limit set karein:
               </p>
 
               <input
@@ -1191,7 +1087,7 @@ export const KhataScreen = () => {
           </div>
         )}
 
-        {/* MODAL 4: RECORD PAYMENT MODAL */}
+        {/* MODAL 4: RECORD PAYMENT */}
         {showRecordPaymentModal && selectedCustomer && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -1271,7 +1167,7 @@ export const KhataScreen = () => {
           </div>
         )}
 
-        {/* MODAL 5: ADD CREDIT (NAYA PANNA) */}
+        {/* MODAL 5: ADD CREDIT (NAYA KHATA) */}
         {showAddCreditModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
             <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
