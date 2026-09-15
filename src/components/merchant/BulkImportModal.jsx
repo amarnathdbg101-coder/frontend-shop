@@ -54,10 +54,41 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
     }
   };
 
+  // Robust CSV line tokenizer that handles quotes, commas inside strings, and escapes
+  const parseCSVLine = (line, delimiter = ',') => {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === delimiter && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result.map((c) => c.replace(/^["']|["']$/g, '').trim());
+  };
+
   // 2. Parse CSV text into items
   const parseCSVContent = (content, fileName = '') => {
     try {
       setErrorMessage('');
+      
+      // Strip UTF-8 BOM if present
+      if (content.charCodeAt(0) === 0xfeff) {
+        content = content.slice(1);
+      }
+
       const lines = content.split(/\r?\n/).filter((l) => l.trim().length > 0);
 
       if (lines.length === 0) {
@@ -66,8 +97,17 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
         return;
       }
 
+      // Detect separator: comma (,), semicolon (;), or tab (\t)
+      const firstLine = lines[0];
+      let delimiter = ',';
+      if (firstLine.includes('\t')) {
+        delimiter = '\t';
+      } else if ((firstLine.match(/;/g) || []).length > (firstLine.match(/,/g) || []).length) {
+        delimiter = ';';
+      }
+
       // Check if line 0 is a header
-      const firstLineLower = lines[0].toLowerCase();
+      const firstLineLower = firstLine.toLowerCase();
       const hasHeader =
         firstLineLower.includes('name') ||
         firstLineLower.includes('price') ||
@@ -86,12 +126,9 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
       let minIdx = -1;
       let descIdx = -1;
 
-      // Detect separator: comma or tab
-      const sep = lines[0].includes('\t') ? '\t' : ',';
-
       if (hasHeader) {
         startIndex = 1;
-        const header = lines[0].split(sep).map((h) => h.trim().toLowerCase());
+        const header = parseCSVLine(lines[0], delimiter).map((h) => h.toLowerCase());
 
         nameIdx = header.findIndex((h) => h.includes('name') || h.includes('item') || h.includes('title'));
         skuIdx = header.findIndex((h) => h.includes('sku') || h.includes('code') || h.includes('barcode'));
@@ -108,7 +145,7 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
       const items = [];
 
       for (let i = startIndex; i < lines.length; i++) {
-        const row = lines[i].split(sep).map((c) => c.trim().replace(/^"|"$/g, ''));
+        const row = parseCSVLine(lines[i], delimiter);
         if (row.length === 0) continue;
 
         const name = nameIdx < row.length ? row[nameIdx] : '';
