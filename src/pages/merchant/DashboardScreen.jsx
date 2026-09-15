@@ -45,6 +45,7 @@ import { shopApi } from '../../api/shop.api';
 import { posApi } from '../../api/pos.api';
 import { khataApi } from '../../api/khata.api';
 import { inventoryApi } from '../../api/inventory.api';
+import { productApi } from '../../api/product.api';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { MerchantCopilotModal } from '../../components/common/MerchantCopilotModal';
 import { EditShopModal } from '../../components/common/EditShopModal';
@@ -113,11 +114,12 @@ export const DashboardScreen = () => {
     }
     try {
       setLoading(true);
-      const [posSummary, khataSummary, lowStock, custRes] = await Promise.allSettled([
+      const [posSummary, khataSummary, lowStock, custRes, prodRes] = await Promise.allSettled([
         posApi.getDailySummary(),
         khataApi.getSummary(),
         inventoryApi.getLowStockAlerts(),
         khataApi.getCustomers(),
+        shop?.slug ? productApi.listByShopSlug(shop.slug) : Promise.resolve([]),
       ]);
 
       let todaySales = 0;
@@ -145,6 +147,12 @@ export const DashboardScreen = () => {
         setKhataCustomers(Array.isArray(custs) ? custs : []);
       }
 
+      let catalogCount = 0;
+      if (prodRes.status === 'fulfilled') {
+        const prods = prodRes.value?.products || prodRes.value || [];
+        catalogCount = Array.isArray(prods) ? prods.length : 0;
+      }
+
       // Est profit calculation (approx 18% gross margin minus kharcha)
       const estProfit = Math.round(todaySales * 0.18);
 
@@ -154,6 +162,7 @@ export const DashboardScreen = () => {
         totalUdhar,
         udharCustomersCount,
         lowStockCount,
+        catalogCount,
         netProfit: estProfit,
       });
     } catch (err) {
@@ -876,20 +885,28 @@ export const DashboardScreen = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '14px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#4f46e5' }}>126</div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Dukan & Item Views</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#4f46e5' }}>
+                {stats.catalogCount || 0}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Catalog Me Saman</div>
             </div>
             <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '14px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#059669' }}>42</div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Nearby Search Shows</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#059669' }}>
+                {stats.salesCount || 0}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Aaj Ke Bills / Bikri</div>
             </div>
             <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '14px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#db2777' }}>28%</div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Customer Walk-in Intent</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#db2777' }}>
+                {khataCustomers.length}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Khata Grahak</div>
             </div>
             <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '14px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#d97706' }}>94%</div>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Customer Trust Score</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 900, color: shop?.is_active ? '#059669' : '#d97706' }}>
+                {shop?.is_active ? '100% LIVE' : 'PAUSED'}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>Dukan Live Status</div>
             </div>
           </div>
         </div>

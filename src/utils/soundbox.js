@@ -2,9 +2,54 @@
  * Soundbox Audio Synthesizer & Voice Announcements for ShopMe Merchant
  * 
  * Emulates the audio feedback of BharatPe / Paytm / PhonePe Soundbox devices:
- * 1. Web Audio API synthesized chimes for fast, zero-asset, crisp audio feedback
- * 2. Web SpeechSynthesis Hindi voice announcement: "ShopMe par [X] rupaye prapt huye"
+ * 1. Web Audio API synthesized chimes for instant, zero-latency, crisp audio feedback
+ * 2. Natural Hindi voice announcements with full numeral conversion:
+ *    "ShopMe Soundbox par ek sau pachaas rupaye prapt hue. Shukriya!"
  */
+
+// Natural Hindi Numbers to Words for crisp, accurate pronunciation
+export const numberToHindiWords = (num) => {
+  const n = Math.round(Number(num) || 0);
+  if (n <= 0) return 'shunya';
+  if (n > 9999999) return `${n.toLocaleString('en-IN')}`;
+
+  const ones = [
+    '', 'ek', 'do', 'teen', 'chaar', 'paanch', 'chhe', 'saat', 'aath', 'nau', 'das',
+    'gyaarah', 'baarah', 'terah', 'chaudah', 'pandrah', 'solah', 'satrah', 'athaarah', 'unnees', 'bees',
+    'ikkees', 'baayees', 'teyees', 'chaubees', 'pachchees', 'chhabbees', 'sattaayees', 'athaayees', 'untees', 'tees',
+    'iktees', 'battees', 'taintees', 'chauntees', 'paintees', 'chhattees', 'saintees', 'adhtees', 'untaalees', 'chaalees',
+    'iktaalees', 'byaalees', 'taintaalees', 'chawaalees', 'paintaalees', 'chhiyaalees', 'saintaalees', 'adhtaalees', 'unchaas', 'pachaas',
+    'ikyaawan', 'baawan', 'tirpan', 'chawwan', 'pachpan', 'chhappan', 'sattaawan', 'atthaawan', 'unsath', 'saath',
+    'iksath', 'baasath', 'tirsath', 'chaunsath', 'painsath', 'chhiyaasath', 'sadsath', 'adsath', 'unhattar', 'sattar',
+    'ikhattar', 'bahattar', 'tihattar', 'chauhattar', 'pachhattar', 'chhihattar', 'satattar', 'athattar', 'unyoonaasi', 'assi',
+    'ikyaasi', 'bayaasi', 'tiraasi', 'chauraasi', 'pachaasi', 'chhiyaasi', 'sattaasi', 'atthaasi', 'nawaasi', 'nabbe',
+    'ikyaanwe', 'baanwe', 'tiraanwe', 'chauraanwe', 'pachaanwe', 'chhiyaanwe', 'sattaanwe', 'atthaanwe', 'ninyaanwe', 'sau'
+  ];
+
+  let words = '';
+  let rem = n;
+
+  if (rem >= 100000) {
+    const lakh = Math.floor(rem / 100000);
+    words += (ones[lakh] || lakh) + ' lakh ';
+    rem %= 100000;
+  }
+  if (rem >= 1000) {
+    const hazar = Math.floor(rem / 1000);
+    words += (ones[hazar] || hazar) + ' hazaar ';
+    rem %= 1000;
+  }
+  if (rem >= 100) {
+    const sau = Math.floor(rem / 100);
+    words += (ones[sau] || sau) + ' sau ';
+    rem %= 100;
+  }
+  if (rem > 0) {
+    words += ones[rem] || rem;
+  }
+
+  return words.trim();
+};
 
 export const playSoundboxTone = (tone = 'payment', spokenAmount = null) => {
   try {
@@ -83,22 +128,46 @@ export const playSoundboxAnnouncement = (text) => {
     utterance.pitch = 1.0;
 
     const voices = window.speechSynthesis.getVoices();
+    // Prioritize high quality Hindi voices, fallback to Indian English
     const hiVoice = voices.find(
-      (v) => v.lang.includes('hi') || v.lang.includes('HI') || v.name.toLowerCase().includes('hindi')
-    );
+      (v) =>
+        v.lang === 'hi-IN' ||
+        v.lang.startsWith('hi') ||
+        v.name.toLowerCase().includes('hindi') ||
+        v.name.toLowerCase().includes('kalpana') ||
+        v.name.toLowerCase().includes('hemant') ||
+        v.name.toLowerCase().includes('lekha') ||
+        v.name.toLowerCase().includes('india')
+    ) || voices.find((v) => v.lang.includes('en-IN') || v.lang.includes('en_IN'));
+
     if (hiVoice) {
       utterance.voice = hiVoice;
     }
 
     setTimeout(() => {
       window.speechSynthesis.speak(utterance);
-    }, 350);
+    }, 280);
   } catch (e) {
     console.warn('[Soundbox] Announcement error:', e);
   }
 };
 
 export const speakSoundboxPayment = (amount) => {
-  const cleanAmount = Math.round(Number(amount) || 0);
-  playSoundboxAnnouncement(`ShopMe par ${cleanAmount} rupaye prapt huye`);
+  const n = Math.round(Number(amount) || 0);
+  const hindiWords = numberToHindiWords(n);
+  playSoundboxAnnouncement(`ShopMe Soundbox par ${hindiWords} rupaye prapt hue. Shukriya!`);
+};
+
+export const speakKhataTransaction = (type, amount, customerName = '') => {
+  const n = Math.round(Number(amount) || 0);
+  const hindiWords = numberToHindiWords(n);
+  const name = customerName ? `${customerName} ` : 'Grahak ';
+
+  if (type === 'CREDIT' || type === 'credit') {
+    playSoundboxTone('credit');
+    playSoundboxAnnouncement(`${name}ke khate me ${hindiWords} rupaye udhar likhe gaye.`);
+  } else {
+    playSoundboxTone('payment');
+    playSoundboxAnnouncement(`${name}se ${hindiWords} rupaye jama prapt hue. Shukriya!`);
+  }
 };
