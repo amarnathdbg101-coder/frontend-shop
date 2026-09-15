@@ -67,20 +67,21 @@ export const playSoundboxTone = (tone = 'payment', spokenAmount = null) => {
   }
 };
 
-export const speakSoundboxPayment = (amount) => {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+export const playSoundboxAnnouncement = (text) => {
+  if (typeof window === 'undefined') return;
+
+  // Play chime first
+  playSoundboxTone('payment');
+
+  if (!window.speechSynthesis) return;
 
   try {
-    window.speechSynthesis.cancel(); // cancel previous queued speeches
-    const cleanAmount = Math.round(Number(amount) || 0);
-    const text = `ShopMe par ${cleanAmount} rupaye prapt huye`;
-
+    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'hi-IN';
     utterance.rate = 1.0;
     utterance.pitch = 1.0;
 
-    // Try finding Hindi voice if available
     const voices = window.speechSynthesis.getVoices();
     const hiVoice = voices.find(
       (v) => v.lang.includes('hi') || v.lang.includes('HI') || v.name.toLowerCase().includes('hindi')
@@ -89,11 +90,15 @@ export const speakSoundboxPayment = (amount) => {
       utterance.voice = hiVoice;
     }
 
-    // Delay speech slightly to let chord chime finish
     setTimeout(() => {
       window.speechSynthesis.speak(utterance);
-    }, 450);
+    }, 350);
   } catch (e) {
-    console.warn('[Soundbox] Speech error:', e);
+    console.warn('[Soundbox] Announcement error:', e);
   }
+};
+
+export const speakSoundboxPayment = (amount) => {
+  const cleanAmount = Math.round(Number(amount) || 0);
+  playSoundboxAnnouncement(`ShopMe par ${cleanAmount} rupaye prapt huye`);
 };
