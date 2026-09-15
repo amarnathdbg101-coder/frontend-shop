@@ -26,6 +26,7 @@ import {
   Upload,
   Edit3,
   Trash2,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { productApi } from '../../api/product.api';
@@ -35,6 +36,7 @@ import { generateSmartSKU } from '../../utils/sku';
 import { getCategoryEmoji } from '../../utils/categoryMeta';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { ProductDetailModal } from '../../components/common/ProductDetailModal';
+import { BulkImportModal } from '../../components/merchant/BulkImportModal';
 import { getImageUrl } from '../../utils/imageUrl';
 import { useDebounce } from '../../hooks/useDebounce';
 import { SkeletonRow } from '../../components/ui/Skeleton';
@@ -64,6 +66,7 @@ export const InventoryScreen = () => {
 
   // New Product Modal State
   const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [newProductForm, setNewProductForm] = useState({
     name: '',
     sku: '',
@@ -599,9 +602,9 @@ export const InventoryScreen = () => {
             </button>
           </div>
 
-          {/* Top Actions: Search + Naya Product */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <div className="search-box" style={{ flex: 1, margin: 0 }}>
+          {/* Top Actions: Search + CSV Import + Naya Product */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
+            <div className="search-box" style={{ flex: 1, minWidth: '220px', margin: 0 }}>
               <Search size={18} />
               <input
                 type="text"
@@ -610,6 +613,25 @@ export const InventoryScreen = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            
+            <button
+              type="button"
+              onClick={() => setShowBulkImportModal(true)}
+              className="btn btn-secondary btn-sm"
+              style={{
+                flexShrink: 0,
+                gap: '6px',
+                backgroundColor: 'rgba(79, 70, 229, 0.08)',
+                borderColor: 'rgba(79, 70, 229, 0.25)',
+                color: 'var(--color-primary)',
+                fontWeight: 700,
+                padding: '8px 12px',
+              }}
+              title="500+ items direct CSV ya Excel se import karein"
+            >
+              <FileSpreadsheet size={16} /> <span>CSV Import</span>
+            </button>
+
             <button
               onClick={() => {
                 setShowAddProductModal(true);
@@ -618,7 +640,7 @@ export const InventoryScreen = () => {
                 }
               }}
               className="btn btn-primary btn-sm"
-              style={{ flexShrink: 0, gap: '4px' }}
+              style={{ flexShrink: 0, gap: '4px', padding: '8px 14px' }}
             >
               <Plus size={16} /> Naya Saman
             </button>
@@ -1655,6 +1677,12 @@ export const InventoryScreen = () => {
           </div>
         </div>
       )}
+      {/* Bulk CSV / Excel Import Modal */}
+      <BulkImportModal
+        isOpen={showBulkImportModal}
+        onClose={() => setShowBulkImportModal(false)}
+        onSuccess={loadData}
+      />
     </AppLayout>
   );
 };

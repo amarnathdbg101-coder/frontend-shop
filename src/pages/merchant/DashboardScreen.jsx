@@ -37,6 +37,7 @@ import {
   Plus,
   MapPin,
   Flame,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { SkeletonStat } from '../../components/ui/Skeleton';
 import { useAuth } from '../../context/AuthContext';
@@ -48,6 +49,7 @@ import { AppLayout } from '../../components/layout/AppLayout';
 import { MerchantCopilotModal } from '../../components/common/MerchantCopilotModal';
 import { EditShopModal } from '../../components/common/EditShopModal';
 import { AIVoiceKhataModal } from '../../components/merchant/AIVoiceKhataModal';
+import { BulkImportModal } from '../../components/merchant/BulkImportModal';
 import { playSoundboxAnnouncement } from '../../utils/soundbox';
 
 export const DashboardScreen = () => {
@@ -56,6 +58,7 @@ export const DashboardScreen = () => {
 
   const [loading, setLoading] = useState(true);
   const [showEditShopModal, setShowEditShopModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
   const [isVoiceKhataOpen, setIsVoiceKhataOpen] = useState(false);
   const [khataCustomers, setKhataCustomers] = useState([]);
@@ -1319,7 +1322,63 @@ export const DashboardScreen = () => {
             <div style={{ flex: 1 }}>
               <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>Wholesale Procurement List</span>
               <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
-                Mandi / Dealer reorder list aur auto-generated buying sheet
+                PDF mandi kharidari list banayein aur WhatsApp par share karein
+              </div>
+            </div>
+            <ChevronRight size={18} color="#94a3b8" />
+          </div>
+
+          {/* Action 9: Bulk CSV / Excel Import */}
+          <div
+            onClick={() => setShowBulkImportModal(true)}
+            style={{
+              background: '#ffffff',
+              borderRadius: '20px',
+              padding: '18px',
+              border: '1.5px solid #e0e7ff',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.04)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.borderColor = '#4f46e5';
+              e.currentTarget.style.boxShadow = '0 8px 20px rgba(79, 70, 229, 0.12)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.borderColor = '#e0e7ff';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(79, 70, 229, 0.04)';
+            }}
+          >
+            <div
+              style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 6px 14px rgba(79, 70, 229, 0.3)',
+                flexShrink: 0,
+              }}
+            >
+              <FileSpreadsheet size={26} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>Bulk CSV / Excel Saman Import</span>
+                <span style={{ background: '#dcfce7', color: '#15803d', fontSize: '0.68rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px' }}>
+                  500+ ITEMS
+                </span>
+              </div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                Excel sheet ya CSV file upload karke saare products ek sath jodein
               </div>
             </div>
             <ChevronRight size={18} color="#94a3b8" />
@@ -1484,6 +1543,12 @@ export const DashboardScreen = () => {
       <EditShopModal
         isOpen={showEditShopModal}
         onClose={() => setShowEditShopModal(false)}
+      />
+
+      {/* Bulk CSV / Excel Import Modal */}
+      <BulkImportModal
+        isOpen={showBulkImportModal}
+        onClose={() => setShowBulkImportModal(false)}
       />
     </AppLayout>
   );

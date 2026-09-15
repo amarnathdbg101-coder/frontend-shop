@@ -52,6 +52,28 @@ export const productApi = {
     return res.data;
   },
 
+  // Merchant: Bulk Import Products via CSV File
+  bulkImportCSV: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await client.post('/shops/me/products/bulk-import', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+
+  // Merchant: Bulk Import Products via JSON items
+  bulkImportJSON: async (items) => {
+    const res = await client.post('/shops/me/products/bulk-import', items);
+    return res.data;
+  },
+
+  // Merchant: Import Sample CSV Template URL
+  getImportTemplateUrl: () => {
+    const baseURL = client.defaults.baseURL || '/api';
+    return `${baseURL}/shops/me/products/import-template.csv`;
+  },
+
   // Public: Categories list
   getCategories: async () => {
     const res = await client.get('/categories');
