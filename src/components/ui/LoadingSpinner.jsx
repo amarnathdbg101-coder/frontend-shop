@@ -8,7 +8,7 @@
 import React from 'react';
 import { Store } from 'lucide-react';
 
-export const LoadingSpinner = ({ text = 'Dukan OS load ho raha hai...', size = 'default' }) => {
+export const LoadingSpinner = ({ text = 'Loading Merchant OS...', size = 'default' }) => {
   const isSmall = size === 'small';
 
   return (

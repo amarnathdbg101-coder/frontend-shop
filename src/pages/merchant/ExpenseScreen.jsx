@@ -310,14 +310,14 @@ export const ExpenseScreen = () => {
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                 <button type="submit" className="btn btn-primary btn-block" disabled={actionLoading}>
-                  {actionLoading ? 'Save ho raha hai...' : 'Kharcha Save Karein'}
+                  {actionLoading ? 'Saving Expense...' : 'Record Expense'}
                 </button>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setShowAddModal(false)}
                 >
-                  Radd
+                  Cancel
                 </button>
               </div>
             </form>

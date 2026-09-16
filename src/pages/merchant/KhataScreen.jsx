@@ -1481,7 +1481,7 @@ export const KhataScreen = () => {
                   disabled={actionLoading}
                   style={{ flex: 2, padding: '12px', background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}
                 >
-                  {actionLoading ? 'Darj Ho Raha Hai...' : 'Khata Shuru Karein'}
+                  {actionLoading ? 'Processing...' : 'Record Credit Entry'}
                 </button>
               </div>
             </form>
@@ -1590,7 +1590,7 @@ export const KhataScreen = () => {
                   disabled={actionLoading}
                   style={{ flex: 2, padding: '12px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#ffffff', border: 'none', borderRadius: '12px', fontWeight: 800, cursor: 'pointer' }}
                 >
-                  {actionLoading ? 'Darj Ho Raha Hai...' : 'Jama Record Karein'}
+                  {actionLoading ? 'Processing...' : 'Record Payment (Jama)'}
                 </button>
               </div>
             </form>

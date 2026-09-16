@@ -861,7 +861,7 @@ export const InventoryScreen = () => {
             {lowStockItems.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '24px', color: 'var(--color-success)', fontSize: '0.85rem' }}>
                 <CheckCircle size={32} style={{ margin: '0 auto 6px auto', display: 'block' }} />
-                Sabhi products ka stock accha hai! Koi item khatam nahi ho raha.
+                All products have healthy stock levels. No low-stock alerts.
               </div>
             ) : (
               lowStockItems.map((item) => (
@@ -934,14 +934,14 @@ export const InventoryScreen = () => {
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                 <button type="submit" className="btn btn-primary btn-block" disabled={adjustLoading}>
-                  {adjustLoading ? 'Update ho raha hai...' : 'Stock Save Karein'}
+                  {adjustLoading ? 'Updating Stock...' : 'Save Stock Adjustment'}
                 </button>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setSelectedProduct(null)}
                 >
-                  Radd
+                  Cancel
                 </button>
               </div>
             </form>
@@ -1815,14 +1815,14 @@ export const InventoryScreen = () => {
 
               <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
                 <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={editProductLoading}>
-                  {editProductLoading ? 'Save ho raha hai...' : 'Badlav Save Karein'}
+                  {editProductLoading ? 'Saving changes...' : 'Save Changes'}
                 </button>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setEditingProduct(null)}
                 >
-                  Radd
+                  Cancel
                 </button>
               </div>
             </form>

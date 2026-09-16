@@ -734,15 +734,15 @@ export const BulkImportModal = ({ isOpen, onClose, onSuccess }) => {
               {loading ? (
                 <>
                   <RefreshCw size={16} className="animate-spin" />
-                  <span>Import Ho Raha Hai...</span>
+                  <span>Importing Products...</span>
                 </>
               ) : (
                 <>
                   <PackagePlus size={16} />
                   <span>
                     {parsedItems.length > 0
-                      ? `${parsedItems.length} Products Import Karein`
-                      : 'File Chunein'}
+                      ? `Import ${parsedItems.length} Products`
+                      : 'Select File to Import'}
                   </span>
                 </>
               )}

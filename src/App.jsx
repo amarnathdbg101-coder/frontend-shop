@@ -57,7 +57,7 @@ const ProtectedMerchantRoute = ({ children }) => {
   const { isAuthenticated, loading, isMerchant } = useAuth();
 
   if (loading) {
-    return <LoadingSpinner text="Dukan OS load ho raha hai..." />;
+    return <LoadingSpinner text="Loading Merchant OS..." />;
   }
 
   if (!isAuthenticated) {
@@ -77,7 +77,7 @@ function App() {
               <BrowserRouter>
                 <WebSocketOrderAlertListener />
                 <OfflineSyncBanner />
-                <Suspense fallback={<LoadingSpinner text="Dukan OS load ho raha hai..." />}>
+                <Suspense fallback={<LoadingSpinner text="Loading Merchant OS..." />}>
                   <Routes>
                     <Route path="/" element={<Navigate to="/merchant" replace />} />
 

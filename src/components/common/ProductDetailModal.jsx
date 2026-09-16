@@ -439,7 +439,7 @@ export const ProductDetailModal = ({
                     disabled={reserving}
                   >
                     <ShoppingBag size={18} />
-                    <span>{reserving ? 'Hold Ho Raha Hai...' : `Item Hold Karein (₹${product.price * reserveQty})`}</span>
+                    <span>{reserving ? 'Processing...' : `Reserve Item (₹${product.price * reserveQty})`}</span>
                   </button>
                 </form>
               )}
