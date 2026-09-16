@@ -1,94 +1,89 @@
-/**
- * Merchant Desktop Top Navbar Component (Screens >= 1024px)
- * 
- * Hinglish Hint:
- * Laptop & Desktop screens ke liye premium Dukan OS Header:
- * - Dukan ka Brand & Logo
- * - Live Online / Offline Status Indicator
- * - Navigation links:
- *   - Dashboard (Overview)
- *   - POS Billing (Counter terminal with live cart badge)
- *   - Stock & Catalog (Inventory)
- *   - Khata Book (Udhar ledger)
- *   - Mandi List (Procurement)
- *   - Pocket Profit (Analytics)
- *   - Daily Expenses (Kharche)
- *   - Pickup Counter (OTP verify)
- * - Actions:
- *   - Customer Storefront Link (View shop as a customer)
- *   - AI Merchant Copilot trigger
- *   - Dark / Light Mode Switcher
- *   - Merchant Profile / Settings Avatar
- */
-
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  Store,
   LayoutDashboard,
   Receipt,
   Package,
   BookOpen,
-  ClipboardList,
   TrendingUp,
   Wallet,
   ShieldCheck,
+  Store,
   ExternalLink,
+  Bot,
   Sun,
   Moon,
-  Bot,
+  Users,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { usePOS } from '../../context/POSContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
-import { getImageUrl } from '../../utils/imageUrl';
+import { usePOS } from '../../context/POSContext';
+import { ThemeLanguageBar } from '../common/ThemeLanguageBar';
 import { MerchantCopilotModal } from '../common/MerchantCopilotModal';
+import { getImageUrl } from '../../utils/imageUrl';
 
 export const DesktopNavbar = () => {
   const navigate = useNavigate();
-  const { user, shop } = useAuth();
-  const { itemCount } = usePOS();
+  const { user, shop, isOwner } = useAuth();
   const { isDark, toggleTheme } = useTheme();
+  const { itemCount } = usePOS();
+  const { t, isHindi } = useLanguage();
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
 
   return (
     <>
       <header className="desktop-navbar" role="banner">
         <div className="desktop-navbar-inner">
-          {/* Left: Brand & Live Dukan Status */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
+          {/* Left: Store Brand & Live Status */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
             <div
               onClick={() => navigate('/merchant')}
-              style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: 'var(--radius-md)',
+                background: 'linear-gradient(135deg, var(--color-primary) 0%, #4338ca 100%)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 900,
+                fontSize: '1.2rem',
+                boxShadow: '0 4px 10px rgba(79, 70, 229, 0.3)',
+                cursor: 'pointer',
+              }}
+              title={t('nav.dashboard')}
             >
+              <Store size={20} />
+            </div>
+
+            <div>
               <div
+                onClick={() => navigate('/merchant')}
                 style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'linear-gradient(135deg, #4f46e5 0%, #312e81 100%)',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  fontSize: '0.98rem',
                   fontWeight: 900,
-                  fontSize: '1.2rem',
-                  boxShadow: '0 4px 10px rgba(79, 70, 229, 0.3)',
+                  color: 'var(--text-primary)',
+                  lineHeight: 1.1,
+                  cursor: 'pointer',
                 }}
               >
-                <Store size={22} />
+                {shop?.name || t('app_name')}
               </div>
-              <div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.1 }}>
-                  {shop?.name || 'ShopMe Merchant'}
-                </div>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '0.4px' }}>
-                  DUKAN OS • {shop?.category || 'Retail Counter'}
-                </div>
+              <div
+                style={{
+                  fontSize: '0.66rem',
+                  fontWeight: 700,
+                  color: 'var(--color-primary)',
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {isHindi ? 'मर्चेंट बिलिंग ओएस' : 'MERCHANT OS'}
               </div>
             </div>
 
-            {/* Shop Live Status Dot */}
             {shop && (
               <div
                 style={{
@@ -112,7 +107,7 @@ export const DesktopNavbar = () => {
                     boxShadow: shop.is_active ? '0 0 6px #10b981' : 'none',
                   }}
                 />
-                <span>{shop.is_active ? 'Online (Khuli Hai)' : 'Offline (Band)'}</span>
+                <span>{shop.is_active ? t('common.online') : t('common.offline')}</span>
               </div>
             )}
           </div>
@@ -134,7 +129,7 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <LayoutDashboard size={17} />
-              <span>Dashboard</span>
+              <span>{t('nav.dashboard')}</span>
             </NavLink>
 
             <NavLink
@@ -142,7 +137,7 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <Receipt size={17} />
-              <span>POS Billing</span>
+              <span>{t('nav.pos')}</span>
               {itemCount > 0 && <span className="desktop-nav-badge">{itemCount}</span>}
             </NavLink>
 
@@ -151,7 +146,7 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <Package size={17} />
-              <span>Stock & Catalog</span>
+              <span>{t('nav.inventory')}</span>
             </NavLink>
 
             <NavLink
@@ -159,15 +154,7 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <BookOpen size={17} />
-              <span>Customer Khata</span>
-            </NavLink>
-
-            <NavLink
-              to="/merchant/procurement-list"
-              className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
-            >
-              <ClipboardList size={17} />
-              <span>Mandi List</span>
+              <span>{t('nav.khata')}</span>
             </NavLink>
 
             <NavLink
@@ -175,7 +162,7 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <TrendingUp size={17} />
-              <span>Pocket Profit</span>
+              <span>{t('nav.analytics')}</span>
             </NavLink>
 
             <NavLink
@@ -183,7 +170,7 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <Wallet size={17} />
-              <span>Kharche</span>
+              <span>{t('nav.expenses')}</span>
             </NavLink>
 
             <NavLink
@@ -191,7 +178,7 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <ShieldCheck size={17} />
-              <span>Pickups</span>
+              <span>{t('nav.pickups')}</span>
             </NavLink>
           </nav>
 
@@ -215,12 +202,11 @@ export const DesktopNavbar = () => {
                   fontSize: '0.8rem',
                   fontWeight: 600,
                   textDecoration: 'none',
-                  transition: 'all 0.15s ease',
                 }}
-                title="Customer Storefront Nayi Tab me Kholein"
+                title={isHindi ? 'ग्राहक स्टोरफ़्रंट देखें' : 'View Customer Storefront'}
               >
                 <ExternalLink size={14} />
-                <span>Storefront</span>
+                <span>{isHindi ? 'दुकान' : 'Storefront'}</span>
               </a>
             )}
 
@@ -240,31 +226,14 @@ export const DesktopNavbar = () => {
                 fontWeight: 700,
                 cursor: 'pointer',
               }}
-              title="Shop AI Assistant"
+              title={isHindi ? 'एआई सहायक' : 'AI Copilot'}
             >
               <Bot size={15} />
-              <span>AI Copilot</span>
+              <span>{isHindi ? 'एआई सहायक' : 'AI Copilot'}</span>
             </button>
 
-            {/* Dark / Light Mode Switcher */}
-            <button
-              onClick={toggleTheme}
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--border-subtle)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '36px',
-                height: '36px',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-primary)',
-              }}
-              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {isDark ? <Sun size={18} color="#fbbf24" /> : <Moon size={18} />}
-            </button>
+            {/* Compact Theme & Language Bar */}
+            <ThemeLanguageBar compact={true} />
 
             {/* Merchant Profile Avatar */}
             {user ? (
@@ -287,7 +256,7 @@ export const DesktopNavbar = () => {
                   overflow: 'hidden',
                   padding: 0,
                 }}
-                title="Dukan Settings & Profile"
+                title={t('nav.settings')}
               >
                 {user.avatar_url ? (
                   <img
@@ -304,7 +273,7 @@ export const DesktopNavbar = () => {
                 onClick={() => navigate('/login')}
                 className="btn btn-primary btn-sm"
               >
-                Login
+                {t('nav.login')}
               </button>
             )}
           </div>
@@ -318,3 +287,4 @@ export const DesktopNavbar = () => {
     </>
   );
 };
+export default DesktopNavbar;

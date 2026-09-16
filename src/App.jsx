@@ -1,22 +1,13 @@
-/**
- * ShopMe Merchant Application Router
- * 
- * Features:
- * - Lazy loading for all merchant pages for optimal bundle size
- * - Global ErrorBoundary protection against runtime crashes
- * - Branded LoadingSpinner for authentication check and route transitions
- * - Global AuthContext, POSContext, ThemeContext, and LanguageContext
- * - Merchant-only route guards (ProtectedMerchantRoute)
- */
-
 import React, { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { POSProvider } from './context/POSContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { POSProvider } from './context/POSContext';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
+import { WebSocketOrderAlertListener } from './components/merchant/WebSocketOrderAlertListener';
+import { OfflineSyncBanner } from './components/merchant/OfflineSyncBanner';
 
 // Lazy-loaded Auth Pages
 const LoginScreen = lazy(() =>
@@ -24,6 +15,9 @@ const LoginScreen = lazy(() =>
 );
 const RegisterScreen = lazy(() =>
   import('./pages/auth/RegisterScreen').then((m) => ({ default: m.RegisterScreen }))
+);
+const StaffLoginScreen = lazy(() =>
+  import('./pages/auth/StaffLoginScreen').then((m) => ({ default: m.StaffLoginScreen }))
 );
 
 // Lazy-loaded Merchant Pages
@@ -70,34 +64,6 @@ const ProtectedMerchantRoute = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (!isMerchant) {
-    return (
-      <div
-        role="alert"
-        style={{
-          padding: '3rem 1.5rem',
-          textAlign: 'center',
-          color: 'var(--text-primary, #f8fafc)',
-          maxWidth: '480px',
-          margin: '2rem auto',
-        }}
-      >
-        <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-danger, #ef4444)', marginBottom: '0.5rem' }}>
-          Access Restricted
-        </h2>
-        <p style={{ color: 'var(--text-secondary, #94a3b8)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-          Yeh portal sirf registered Dukaandaar (Shop Owner) ke liye hai.
-        </p>
-        <button 
-          onClick={() => { localStorage.clear(); window.location.href = '/login'; }}
-          className="btn btn-primary"
-        >
-          Shop Owner Account se Login Karein
-        </button>
-      </div>
-    );
-  }
-
   return children;
 };
 
@@ -109,14 +75,17 @@ function App() {
           <AuthProvider>
             <POSProvider>
               <BrowserRouter>
+                <WebSocketOrderAlertListener />
+                <OfflineSyncBanner />
                 <Suspense fallback={<LoadingSpinner text="Dukan OS load ho raha hai..." />}>
                   <Routes>
-                    {/* Merchant OS Root: Default to Merchant Dashboard */}
                     <Route path="/" element={<Navigate to="/merchant" replace />} />
 
                     {/* Auth Routes */}
                     <Route path="/login" element={<LoginScreen />} />
                     <Route path="/register" element={<RegisterScreen />} />
+                    <Route path="/staff-login" element={<StaffLoginScreen />} />
+                    <Route path="/merchant/staff-login" element={<StaffLoginScreen />} />
 
                     {/* Merchant Dashboard & Dukan OS (Protected) */}
                     <Route

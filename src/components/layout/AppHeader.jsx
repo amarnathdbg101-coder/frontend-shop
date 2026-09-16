@@ -1,25 +1,16 @@
-/**
- * Top App Header Component (Modern Glassy Style)
- * 
- * Hinglish Hint:
- * Top navigation bar:
- * - Dukan ka naam aur live status (Online/Offline)
- * - Back button
- * - User Avatar bubble (Tap karne par profile screen khulti hai)
- */
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Menu, Sun, Moon } from 'lucide-react';
+import { ArrowLeft, Menu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { ThemeLanguageBar } from '../common/ThemeLanguageBar';
 import { SideDrawer } from './SideDrawer';
 import { getImageUrl } from '../../utils/imageUrl';
 
 export const AppHeader = ({ title, subtitle, showBack = false }) => {
   const navigate = useNavigate();
   const { user, shop } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { t, isHindi } = useLanguage();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
@@ -39,8 +30,7 @@ export const AppHeader = ({ title, subtitle, showBack = false }) => {
                 borderRadius: 'var(--radius-sm)',
                 color: 'var(--text-primary)',
               }}
-              title="Peeche Jayein"
-              aria-label="Peeche Jayein"
+              aria-label={t('common.close')}
             >
               <ArrowLeft size={20} />
             </button>
@@ -58,8 +48,7 @@ export const AppHeader = ({ title, subtitle, showBack = false }) => {
                 borderRadius: 'var(--radius-sm)',
                 color: 'var(--text-primary)',
               }}
-              title="Side Menu Kholein"
-              aria-label="Side Menu Kholein"
+              aria-label={t('nav.menu')}
             >
               <Menu size={22} />
             </button>
@@ -67,7 +56,7 @@ export const AppHeader = ({ title, subtitle, showBack = false }) => {
 
           <div>
             <div className="header-title">
-              {title || (shop ? shop.name : 'ShopMe')}
+              {title || (shop ? shop.name : t('app_name'))}
             </div>
             {subtitle ? (
               <div className="header-subtitle">{subtitle}</div>
@@ -83,53 +72,19 @@ export const AppHeader = ({ title, subtitle, showBack = false }) => {
                   }}
                 />
                 <span style={{ fontWeight: 600, color: shop.is_active ? '#065f46' : '#991b1b' }}>
-                  {shop.is_active ? 'Online (Khuli Hai)' : 'Offline (Band)'}
+                  {shop.is_active ? t('common.online') : t('common.offline')}
                 </span>
               </div>
             ) : user ? (
-              <div className="header-subtitle">Namaste, {user.full_name}</div>
+              <div className="header-subtitle">
+                {isHindi ? `नमस्ते, ${user.full_name || user.name}` : `Hello, ${user.full_name || user.name}`}
+              </div>
             ) : null}
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {/* Quick Menu Button when back button is active */}
-          {showBack && (
-            <button
-              onClick={() => setDrawerOpen(true)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '6px',
-                color: 'var(--text-secondary)',
-              }}
-              title="Menu"
-            >
-              <Menu size={20} />
-            </button>
-          )}
-
-          {/* Quick Dark/Light Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '6px',
-              borderRadius: 'var(--radius-sm)',
-              color: 'var(--text-primary)',
-            }}
-            title={isDark ? 'Switch to Normal Light Mode' : 'Switch to Dark Mode'}
-          >
-            {isDark ? <Sun size={19} color="#fbbf24" /> : <Moon size={19} />}
-          </button>
+          <ThemeLanguageBar compact={true} />
 
           {user ? (
             <button
@@ -151,7 +106,7 @@ export const AppHeader = ({ title, subtitle, showBack = false }) => {
                 overflow: 'hidden',
                 padding: 0,
               }}
-              title="Profile & Settings"
+              aria-label={t('nav.settings')}
             >
               {user.avatar_url ? (
                 <img
@@ -160,7 +115,7 @@ export const AppHeader = ({ title, subtitle, showBack = false }) => {
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               ) : (
-                (user?.name || user?.full_name)?.charAt(0)?.toUpperCase() || 'U'
+                (user?.name || user?.full_name)?.charAt(0)?.toUpperCase() || 'M'
               )}
             </button>
           ) : (
@@ -168,7 +123,7 @@ export const AppHeader = ({ title, subtitle, showBack = false }) => {
               onClick={() => navigate('/login')}
               className="btn btn-primary btn-sm"
             >
-              Login
+              {t('nav.login')}
             </button>
           )}
         </div>
@@ -179,3 +134,4 @@ export const AppHeader = ({ title, subtitle, showBack = false }) => {
     </>
   );
 };
+export default AppHeader;

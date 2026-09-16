@@ -59,3 +59,5 @@ client.interceptors.response.use(
 );
 
 export default client;
+
+export const apiClient = client;

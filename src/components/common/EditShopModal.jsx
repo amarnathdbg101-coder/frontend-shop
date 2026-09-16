@@ -604,11 +604,12 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
                   <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
                     ✅ Dukan Ka Real QR Preview (Customer yahi scan karenge)
                   </div>
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(previewUpiUri)}&size=140x140&margin=3`}
-                    alt="Real Shop UPI QR Preview"
-                    style={{ width: '130px', height: '130px', borderRadius: '8px', border: '3px solid #ffffff', boxShadow: '0 4px 10px rgba(0,0,0,0.08)', margin: '0 auto', display: 'block' }}
-                  />
+                  <RealQRCode
+                      value={previewUpiUri}
+                      size={150}
+                      logoText="UPI"
+                      showDownload={false}
+                    />
                   <div style={{ marginTop: '8px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-primary)' }}>
                     UPI VPA: {formData.upi_id}
                   </div>

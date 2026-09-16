@@ -1,15 +1,3 @@
-/**
- * Merchant Bottom Navigation Bar
- * 
- * Hinglish Hint:
- * Dukaandar ke liye dedicated counter bottom bar:
- * - Home (Dashboard overview)
- * - POS (Quick billing counter)
- * - Stock (Inventory & wholesale)
- * - Khata (Udhaar ledger)
- * - Profile (Shop settings)
- */
-
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -20,19 +8,21 @@ import {
   User,
 } from 'lucide-react';
 import { usePOS } from '../../context/POSContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const BottomNav = () => {
   const { itemCount } = usePOS();
+  const { t } = useLanguage();
 
   return (
-    <nav className="bottom-nav" role="navigation" aria-label="Merchant counter navigation">
+    <nav className="bottom-nav" role="navigation" aria-label="Merchant Navigation">
       <NavLink
         to="/merchant"
         end
         className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
       >
         <LayoutDashboard size={20} />
-        <span>Home</span>
+        <span>{t('nav.dashboard')}</span>
       </NavLink>
 
       <NavLink
@@ -40,7 +30,7 @@ export const BottomNav = () => {
         className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
       >
         <Receipt size={20} />
-        <span>POS</span>
+        <span>{t('nav.pos')}</span>
         {itemCount > 0 && <span className="nav-badge">{itemCount}</span>}
       </NavLink>
 
@@ -49,7 +39,7 @@ export const BottomNav = () => {
         className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
       >
         <Package size={20} />
-        <span>Stock</span>
+        <span>{t('nav.inventory')}</span>
       </NavLink>
 
       <NavLink
@@ -57,7 +47,7 @@ export const BottomNav = () => {
         className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
       >
         <BookOpen size={20} />
-        <span>Khata</span>
+        <span>{t('nav.khata')}</span>
       </NavLink>
 
       <NavLink
@@ -65,8 +55,9 @@ export const BottomNav = () => {
         className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
       >
         <User size={20} />
-        <span>Profile</span>
+        <span>{t('nav.settings')}</span>
       </NavLink>
     </nav>
   );
 };
+export default BottomNav;

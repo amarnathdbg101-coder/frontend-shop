@@ -101,3 +101,19 @@
   --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.65);
 }
 
+
+/* Devanagari / Hindi Typography Rules */
+body.lang-hi {
+  font-family: 'Noto Sans Devanagari', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  letter-spacing: 0.01em;
+}
+
+body.lang-hi h1,
+body.lang-hi h2,
+body.lang-hi h3,
+body.lang-hi h4,
+body.lang-hi .btn,
+body.lang-hi .header-title {
+  font-family: 'Noto Sans Devanagari', 'Inter', sans-serif !important;
+  letter-spacing: 0.005em;
+}

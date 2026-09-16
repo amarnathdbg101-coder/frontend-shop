@@ -27,6 +27,7 @@ import { offersApi } from '../../api/offers.api';
 import { useAuth } from '../../context/AuthContext';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { SkeletonCard } from '../../components/ui/Skeleton';
+import { AIMarketingCampaignModal } from '../../components/merchant/AIMarketingCampaignModal';
 
 const TEMPLATES = [
   {
@@ -63,6 +64,7 @@ export const OffersScreen = () => {
   const { shop } = useAuth();
   const [offers, setOffers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAiCampaignModal, setShowAiCampaignModal] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
@@ -503,6 +505,10 @@ export const OffersScreen = () => {
           </div>
         </div>
       )}
+      <AIMarketingCampaignModal
+        isOpen={showAiCampaignModal}
+        onClose={() => setShowAiCampaignModal(false)}
+      />
     </AppLayout>
   );
 };

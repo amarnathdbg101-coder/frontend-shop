@@ -1,17 +1,11 @@
-/**
- * Customer Khata (Udhar / Credit Book) API Service
- */
-
 import client, { API_BASE_URL } from './client';
 
 export const khataApi = {
-  // Total market udhar aur count summary
   getSummary: async () => {
     const res = await client.get('/shops/me/khata/summary');
     return res?.data || res;
   },
 
-  // Udhar wale grahako ki list (search by name/mobile supported)
   listCustomers: async (search = '') => {
     const params = search ? { search } : {};
     const res = await client.get('/shops/me/khata', { params });
@@ -25,7 +19,6 @@ export const khataApi = {
     return khataApi.listCustomers(search);
   },
 
-  // Kisi grahak ki complete passbook / transaction history
   getCustomerHistory: async (mobile) => {
     const clean = String(mobile).replace(/[^0-9]/g, '').slice(-10);
     const res = await client.get(`/shops/me/khata/${clean}/statement`);
@@ -40,7 +33,6 @@ export const khataApi = {
     return khataApi.getCustomerHistory(mobile);
   },
 
-  // Naya udhar likhna (Grahak ko udhar samaan diya)
   addCredit: async (creditData) => {
     const cleanMobile = String(creditData.customer_mobile || creditData.mobile || '')
       .replace(/[^0-9]/g, '')
@@ -64,7 +56,6 @@ export const khataApi = {
     return khataApi.addCredit(creditData);
   },
 
-  // Grahak ne paise jama kiye (Settlement / Payment received)
   recordPayment: async (mobile, paymentData) => {
     const clean = String(mobile).replace(/[^0-9]/g, '').slice(-10);
     const payload = {
@@ -78,27 +69,51 @@ export const khataApi = {
     return res?.data || res;
   },
 
-  // Customer ki credit limit update karna
+  reverseTransaction: async (khataId, txId) => {
+    const res = await client.post(`/shops/me/khata/${khataId}/transactions/${txId}/reverse`);
+    return res.data;
+  },
+
+  resolveDispute: async (khataId, txId, resolutionNotes) => {
+    const res = await client.post(`/shops/me/khata/${khataId}/dispute/${txId}/resolve`, {
+      resolution: resolutionNotes,
+    });
+    return res.data;
+  },
+
   setCreditLimit: async (mobile, creditLimit) => {
     const clean = String(mobile).replace(/[^0-9]/g, '').slice(-10);
-    const res = await client.put(`/shops/me/khata/${clean}/credit-limit`, { credit_limit: Number(creditLimit) });
+    const res = await client.post(`/shops/me/khata/${clean}/credit-limit`, { credit_limit: Number(creditLimit) });
     return res?.data || res;
   },
 
-  // Aging Bad-Debt Report
+  getCustomerTrustScore: async (mobile) => {
+    const clean = String(mobile).replace(/[^0-9]/g, '').slice(-10);
+    const res = await client.get(`/shops/me/khata/${clean}/trust-score`);
+    return res.data?.data || res.data;
+  },
+
+  requestKhataClosure: async (khataId) => {
+    const res = await client.post(`/shops/me/khata/${khataId}/request-closure`);
+    return res.data;
+  },
+
+  verifyKhataClosureOTP: async (khataId, otp) => {
+    const res = await client.post(`/shops/me/khata/${khataId}/verify-closure-otp`, { otp });
+    return res.data;
+  },
+
   getAgingReport: async () => {
     const res = await client.get('/shops/me/khata/aging');
     return res?.data || res;
   },
 
-  // WhatsApp reminder message & link
   getPaymentReminder: async (mobile) => {
     const clean = String(mobile).replace(/[^0-9]/g, '').slice(-10);
     const res = await client.get(`/shops/me/khata/${clean}/reminder`);
     return res?.data || res;
   },
 
-  // PDF statement download URL
   getStatementPdfUrl: (mobile) => {
     const clean = String(mobile).replace(/[^0-9]/g, '').slice(-10);
     return `${API_BASE_URL || ''}/shops/me/khata/${clean}/statement.pdf`;
