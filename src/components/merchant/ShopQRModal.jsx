@@ -124,7 +124,7 @@ export const ShopQRModal = ({ isOpen, onClose, shop }) => {
           </head>
           <body>
             <div class="standee-frame">
-              <div class="header-badge">⚡ ShopMe Verified Store</div>
+              <div class="header-badge">⚡ ShopSilo Verified Store</div>
               <div class="store-title">${shop.name}</div>
               <div class="store-sub">${shop.address || 'Local Market'} • Live Catalog & Counter Pickups</div>
 

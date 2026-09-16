@@ -188,7 +188,7 @@ export const POSScreen = () => {
 
   return (
     <AppLayout title="Counter POS" subtitle="Tez Billing Terminal">
-      <title>POS Counter Billing — ShopMe Dukan OS</title>
+      <title>POS Counter Billing — ShopSilo Dukan OS</title>
 
       <div className="pos-screen-layout">
         {/* Left Column: Barcode, Voice/Parchi, Search, & Product Catalog */}

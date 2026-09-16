@@ -1,5 +1,5 @@
 /**
- * ShopMe API Client (Axios Instance)
+ * ShopSilo API Client (Axios Instance)
  * 
  * Hinglish Hint:
  * Yeh file backend se baat karne ka main gate hai. 
@@ -25,7 +25,7 @@ const client = axios.create({
 // Request Interceptor: Attach JWT Token automatically if user is logged in
 client.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('shopme_token');
+    const token = localStorage.getItem('shopsilo_token') || localStorage.getItem('shopme_token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -47,8 +47,8 @@ client.interceptors.response.use(
     
     // Auto logout on 401 (Unauthorized) except when trying to login
     if (error.response?.status === 401 && !error.config.url.includes('/auth/login')) {
-      localStorage.removeItem('shopme_token');
-      localStorage.removeItem('shopme_user');
+      localStorage.removeItem('shopsilo_token'); localStorage.removeItem('shopme_token');
+      localStorage.removeItem('shopsilo_user'); localStorage.removeItem('shopme_user');
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

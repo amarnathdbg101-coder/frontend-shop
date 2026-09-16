@@ -33,10 +33,10 @@ export const AIMarketingCampaignModal = ({ isOpen, onClose }) => {
         target_audience: 'Neighborhood Local Customers',
       });
       const resultText = res.campaign_text || res.message || res.text ||
-        `🎉 ${festivalName.toUpperCase()} DHAMAKA SALE at ${shop?.name || 'Local Store'}!\n\n🔥 Get flat ${discountPercent}% OFF on all grocery & essentials this week.\n📍 Store Address: ${shop?.address || 'Local Market'}\n📲 Order / Reserve now on ShopMe: ${window.location.origin}/shop/${shop?.slug || 'store'}\n\nLimited stock. Visit today!`;
+        `🎉 ${festivalName.toUpperCase()} DHAMAKA SALE at ${shop?.name || 'Local Store'}!\n\n🔥 Get flat ${discountPercent}% OFF on all grocery & essentials this week.\n📍 Store Address: ${shop?.address || 'Local Market'}\n📲 Order / Reserve now on ShopSilo: ${window.location.origin}/shop/${shop?.slug || 'store'}\n\nLimited stock. Visit today!`;
       setGeneratedText(resultText);
     } catch (err) {
-      const fallback = `🎉 ${festivalName.toUpperCase()} DHAMAKA SALE at ${shop?.name || 'Local Store'}!\n\n🔥 Get flat ${discountPercent}% OFF on all items.\n📍 Address: ${shop?.address || 'Local Market'}\n📲 Reserve on ShopMe: ${window.location.origin}/shop/${shop?.slug || 'store'}`;
+      const fallback = `🎉 ${festivalName.toUpperCase()} DHAMAKA SALE at ${shop?.name || 'Local Store'}!\n\n🔥 Get flat ${discountPercent}% OFF on all items.\n📍 Address: ${shop?.address || 'Local Market'}\n📲 Reserve on ShopSilo: ${window.location.origin}/shop/${shop?.slug || 'store'}`;
       setGeneratedText(fallback);
     } finally {
       setLoading(false);

@@ -1,10 +1,10 @@
 /**
- * Soundbox Audio Synthesizer & Voice Announcements for ShopMe Merchant
+ * Soundbox Audio Synthesizer & Voice Announcements for ShopSilo Merchant
  * 
  * Emulates the audio feedback of BharatPe / Paytm / PhonePe Soundbox devices:
  * 1. Web Audio API synthesized chimes for instant, zero-latency, crisp audio feedback
  * 2. Natural Hindi voice announcements with full numeral conversion:
- *    "ShopMe Soundbox par ek sau pachaas rupaye prapt hue. Shukriya!"
+ *    "ShopSilo Soundbox par ek sau pachaas rupaye prapt hue. Shukriya!"
  */
 
 // Natural Hindi Numbers to Words for crisp, accurate pronunciation
@@ -155,7 +155,7 @@ export const playSoundboxAnnouncement = (text) => {
 export const speakSoundboxPayment = (amount) => {
   const n = Math.round(Number(amount) || 0);
   const hindiWords = numberToHindiWords(n);
-  playSoundboxAnnouncement(`ShopMe Soundbox par ${hindiWords} rupaye prapt hue. Shukriya!`);
+  playSoundboxAnnouncement(`ShopSilo Soundbox par ${hindiWords} rupaye prapt hue. Shukriya!`);
 };
 
 export const speakKhataTransaction = (type, amount, customerName = '') => {

@@ -2,7 +2,7 @@
  * Offline POS Billing Queue & Resilience Utility
  */
 
-const QUEUE_KEY = 'shopme_offline_sales_queue';
+const QUEUE_KEY = 'shopsilo_offline_sales_queue';
 
 export const offlineSyncQueue = {
   getQueue: () => {

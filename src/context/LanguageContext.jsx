@@ -11,7 +11,7 @@ export const SUPPORTED_LANGUAGES = [
 export const LanguageProvider = ({ children }) => {
   const [language, setLanguageState] = useState(() => {
     try {
-      const saved = localStorage.getItem('shopme_merchant_language') || localStorage.getItem('shopme_language');
+      const saved = localStorage.getItem('shopsilo_merchant_language') || localStorage.getItem('shopsilo_language');
       return saved === 'hi' || saved === 'en' ? saved : 'hi';
     } catch {
       return 'hi';
@@ -20,8 +20,8 @@ export const LanguageProvider = ({ children }) => {
 
   useEffect(() => {
     try {
-      localStorage.setItem('shopme_customer_language', language);
-      localStorage.setItem('shopme_language', language);
+      localStorage.setItem('shopsilo_customer_language', language);
+      localStorage.setItem('shopsilo_language', language);
     } catch (e) {
       console.warn('Unable to persist language preference', e);
     }

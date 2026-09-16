@@ -9,7 +9,7 @@ export function SmartSearchWidget({ onSelectProduct, onClose }) {
   const [recentSearches, setRecentSearches] = useState([]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("shopme_merchant_recent_searches");
+    const saved = localStorage.getItem("shopsilo_merchant_recent_searches");
     if (saved) {
       try { setRecentSearches(JSON.parse(saved)); } catch { /* */ }
     }
@@ -38,7 +38,7 @@ export function SmartSearchWidget({ onSelectProduct, onClose }) {
   const handleSelect = (product) => {
     const updated = [product.name || product.title, ...recentSearches.filter(s => s !== (product.name || product.title))].slice(0, 6);
     setRecentSearches(updated);
-    localStorage.setItem("shopme_merchant_recent_searches", JSON.stringify(updated));
+    localStorage.setItem("shopsilo_merchant_recent_searches", JSON.stringify(updated));
     onSelectProduct(product);
   };
 

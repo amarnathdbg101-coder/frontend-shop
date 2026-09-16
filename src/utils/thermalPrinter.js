@@ -3,7 +3,7 @@
  */
 
 export function formatThermalReceipt({
-  shopName = 'ShopMe Store',
+  shopName = 'ShopSilo Store',
   shopAddress = 'Local Market, Darbhanga',
   shopPhone = '9876543210',
   billNumber = 'BILL-' + Date.now().toString().slice(-6),
@@ -54,7 +54,7 @@ export function formatThermalReceipt({
   text += `Payment Mode:             ${paymentMode.toUpperCase()}\n`;
   text += `${doubleDivider}\n`;
   text += `${centerText('Thank You! Visit Again.')}\n`;
-  text += `${centerText('Powered by ShopMe Dukandar OS')}\n`;
+  text += `${centerText('Powered by ShopSilo Dukandar OS')}\n`;
 
   return text;
 }
@@ -77,7 +77,7 @@ export function printReceiptWindow(receiptData) {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Receipt - ${receiptData.billNumber || 'ShopMe'}</title>
+        <title>Receipt - ${receiptData.billNumber || 'ShopSilo'}</title>
         <style>
           @page {
             size: 80mm auto;

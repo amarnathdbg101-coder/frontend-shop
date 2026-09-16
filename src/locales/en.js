@@ -1,5 +1,5 @@
 export default {
-  "app_name": "ShopMe Merchant OS",
+  "app_name": "ShopSilo Merchant OS",
   "tagline": "Smart Retail Billing, Real-Time Inventory, Customer Khata & Daily Profit Analytics",
   "nav": {
     "dashboard": "Dashboard",

@@ -35,7 +35,7 @@ import { useAuth } from '../../context/AuthContext';
 import { inventoryApi } from '../../api/inventory.api';
 import { aiApi } from '../../api/ai.api';
 
-const STORAGE_KEY = 'shopme_procurement_items_v1';
+const STORAGE_KEY = 'shopsilo_procurement_items_v1';
 
 export const ProcurementListScreen = () => {
   const navigate = useNavigate();
@@ -243,7 +243,7 @@ export const ProcurementListScreen = () => {
     const targetItems = pending.length > 0 ? pending : items;
 
     let text = `📦 *Mandi Khareed & Wholesale Order Sheet*\n`;
-    text += `Dukan: *${shop?.name || 'ShopMe Merchant'}*\n`;
+    text += `Dukan: *${shop?.name || 'ShopSilo Merchant'}*\n`;
     text += `Tareekh: ${new Date().toLocaleDateString('en-IN')}\n\n`;
     text += `*KHAREEDNE WALE ITEMS (${targetItems.length}):*\n`;
 
@@ -274,7 +274,7 @@ export const ProcurementListScreen = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Mandi Khareed Sheet - ${shop?.name || 'ShopMe'}</title>
+        <title>Mandi Khareed Sheet - ${shop?.name || 'ShopSilo'}</title>
         <style>
           body { font-family: system-ui, -apple-system, sans-serif; padding: 24px; color: #1e293b; line-height: 1.5; }
           .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 20px; }
@@ -290,7 +290,7 @@ export const ProcurementListScreen = () => {
       </head>
       <body>
         <div class="header">
-          <div class="title">${shop?.name || 'ShopMe Merchant'}</div>
+          <div class="title">${shop?.name || 'ShopSilo Merchant'}</div>
           <div style="font-weight: 700; font-size: 15px; margin-top: 2px;">MANDI KHAREED & PROCUREMENT SHEET</div>
           <div class="meta">Tareekh: ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })} | Kul Items: ${items.length}</div>
         </div>
@@ -319,7 +319,7 @@ export const ProcurementListScreen = () => {
         </table>
 
         <div class="footer">
-          <div>Generated via ShopMe Dukan OS</div>
+          <div>Generated via ShopSilo Dukan OS</div>
           <div class="sign-line">Mandi Dealer Signature</div>
         </div>
 
@@ -340,7 +340,7 @@ export const ProcurementListScreen = () => {
 
   return (
     <AppLayout title="Mandi Khareed Suchi" subtitle="Wholesale Market Purchase & Reorder Manager">
-      <title>Mandi Procurement List — ShopMe Dukan OS</title>
+      <title>Mandi Procurement List — ShopSilo Dukan OS</title>
 
       {/* Top Banner / Actions Bar */}
       <div

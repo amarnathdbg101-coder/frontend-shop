@@ -60,7 +60,7 @@ export const RegisterScreen = () => {
   };
 
   return (
-    <AppLayout title="ShopMe Partner" subtitle="Dukan Registration" hideNav={true} showBack={true}>
+    <AppLayout title="ShopSilo Partner" subtitle="Dukan Registration" hideNav={true} showBack={true}>
       <div style={{ paddingTop: '10px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div

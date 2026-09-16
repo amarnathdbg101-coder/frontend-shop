@@ -1,5 +1,5 @@
 /**
- * Universal Enterprise PDF & Print Generator for ShopMe
+ * Universal Enterprise PDF & Print Generator for ShopSilo
  * Produces ultra-fast, executive-grade Tax Invoices, Khata Passbooks, and Mandi Procurement Sheets
  */
 
@@ -14,7 +14,7 @@ const formatInr = (amount) => {
  */
 export function printPOSInvoice({ bill, shop, format = 'standard' }) {
   const isThermal = format === 'thermal';
-  const shopName = shop?.name || 'ShopMe Retail Store';
+  const shopName = shop?.name || 'ShopSilo Retail Store';
   const shopAddress = shop?.address || 'Local Market';
   const shopCity = shop?.city || '';
   const shopPhone = shop?.phone || shop?.whatsapp_number || '';
@@ -267,7 +267,7 @@ export function printPOSInvoice({ bill, shop, format = 'standard' }) {
   </div>
 
   <div class="footer-note">
-    Thank you for supporting your neighborhood local store! • Powered by ShopMe Retail OS
+    Thank you for supporting your neighborhood local store! • Powered by ShopSilo Retail OS
   </div>
 
   <script>
@@ -307,7 +307,7 @@ export function printPOSInvoice({ bill, shop, format = 'standard' }) {
  * 2. Generate & Print Official Customer Khata Account Statement
  */
 export function printKhataStatement({ customer, transactions = [], shop }) {
-  const shopName = shop?.name || 'ShopMe Retail Store';
+  const shopName = shop?.name || 'ShopSilo Retail Store';
   const shopAddress = shop?.address || 'Local Market';
   const shopPhone = shop?.phone || shop?.whatsapp_number || '';
   const customerName = customer?.name || customer?.customer_name || 'Khata Customer';
@@ -436,7 +436,7 @@ export function printKhataStatement({ customer, transactions = [], shop }) {
   ` : ''}
 
   <div style="text-align: center; margin-top: 24px; font-size: 10px; color: #94a3b8;">
-    Verified Customer Statement • Powered by ShopMe Retail OS
+    Verified Customer Statement • Powered by ShopSilo Retail OS
   </div>
 
   <script>
@@ -460,7 +460,7 @@ export function printKhataStatement({ customer, transactions = [], shop }) {
  * 3. Generate & Print Mandi Wholesale Procurement Order Sheet
  */
 export function printProcurementSheet({ items = [], shop, filterName = 'All Procurement' }) {
-  const shopName = shop?.name || 'ShopMe Retail Store';
+  const shopName = shop?.name || 'ShopSilo Retail Store';
   const totalEstimatedCost = items.reduce((acc, it) => acc + (Number(it.suggested_buy_price || it.buy_price || it.cost_price || 0) * (Number(it.reorder_quantity || it.shortage_qty || 1))), 0);
 
   const html = `

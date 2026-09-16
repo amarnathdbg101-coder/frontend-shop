@@ -107,7 +107,7 @@ export const SideDrawer = ({ isOpen, onClose }) => {
                 {shop ? shop.name : (user?.name || (isHindi ? 'दुकानदार' : 'Merchant'))}
               </div>
               <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {user ? user.phone || user.email : (isHindi ? 'शॉपमी मर्चेंट ओएस' : 'ShopMe Merchant OS')}
+                {user ? user.phone || user.email : (isHindi ? 'शॉपसिलो मर्चेंट ओएस' : 'ShopSilo Merchant OS')}
               </div>
               <div style={{ marginTop: '2px' }}>
                 <span
@@ -266,7 +266,7 @@ export const SideDrawer = ({ isOpen, onClose }) => {
             </button>
           )}
           <div style={{ textAlign: 'center', fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '10px' }}>
-            ShopMe Merchant OS • v1.0
+            ShopSilo Merchant OS • v1.0
           </div>
         </div>
       </aside>

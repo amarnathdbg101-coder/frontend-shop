@@ -168,7 +168,7 @@ export const DesktopNavbar = () => {
                 fontWeight: 800,
                 fontSize: '0.8rem',
               }}
-              title={isHindi ? 'शॉपमी एआई असिस्टेंट' : 'ShopMe AI Assistant'}
+              title={isHindi ? 'शॉपसिलो एआई असिस्टेंट' : 'ShopSilo AI Assistant'}
             >
               <Bot size={16} />
               <span>{isHindi ? 'एआई कोपायलट' : 'AI Copilot'}</span>

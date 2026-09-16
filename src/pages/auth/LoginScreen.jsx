@@ -60,7 +60,7 @@ export const LoginScreen = () => {
   };
 
   return (
-    <AppLayout title="ShopMe Partner" subtitle="Dukan Billing & Management OS" hideNav={true}>
+    <AppLayout title="ShopSilo Partner" subtitle="Dukan Billing & Management OS" hideNav={true}>
       <div style={{ paddingTop: '20px' }}>
         {/* Brand Banner */}
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>

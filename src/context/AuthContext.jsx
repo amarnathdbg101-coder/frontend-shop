@@ -16,12 +16,12 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [shop, setShop] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('shopme_token') || null);
+  const [token, setToken] = useState(localStorage.getItem('shopsilo_token') || localStorage.getItem('shopme_token') || null);
   const [loading, setLoading] = useState(true);
 
   // App shuru hote hi saved session check karna
   useEffect(() => {
-    const savedUser = localStorage.getItem('shopme_user');
+    const savedUser = localStorage.getItem('shopsilo_user') || localStorage.getItem('shopme_user');
     if (savedUser && token) {
       try {
         const parsedUser = JSON.parse(savedUser);
@@ -55,8 +55,8 @@ export const AuthProvider = ({ children }) => {
     // res: { access_token, user }
     setToken(res.access_token);
     setUser(res.user);
-    localStorage.setItem('shopme_token', res.access_token);
-    localStorage.setItem('shopme_user', JSON.stringify(res.user));
+    localStorage.setItem('shopsilo_token', res.access_token);
+    localStorage.setItem('shopsilo_user', JSON.stringify(res.user));
 
     if (res.user?.role === 'shop' || res.user?.role === 'admin') {
       try {
@@ -75,8 +75,8 @@ export const AuthProvider = ({ children }) => {
     if (res.access_token) {
       setToken(res.access_token);
       setUser(res.user);
-      localStorage.setItem('shopme_token', res.access_token);
-      localStorage.setItem('shopme_user', JSON.stringify(res.user));
+      localStorage.setItem('shopsilo_token', res.access_token);
+      localStorage.setItem('shopsilo_user', JSON.stringify(res.user));
       if (res.user?.role === 'shop' || res.user?.role === 'admin') {
         try {
           const shopData = await shopApi.getMyShop();
@@ -95,8 +95,8 @@ export const AuthProvider = ({ children }) => {
     if (res.access_token) {
       setToken(res.access_token);
       setUser(res.user);
-      localStorage.setItem('shopme_token', res.access_token);
-      localStorage.setItem('shopme_user', JSON.stringify(res.user));
+      localStorage.setItem('shopsilo_token', res.access_token);
+      localStorage.setItem('shopsilo_user', JSON.stringify(res.user));
     }
     return res;
   };
@@ -106,15 +106,15 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     setShop(null);
-    localStorage.removeItem('shopme_token');
-    localStorage.removeItem('shopme_user');
+    localStorage.removeItem('shopsilo_token'); localStorage.removeItem('shopme_token');
+    localStorage.removeItem('shopsilo_user'); localStorage.removeItem('shopme_user');
   };
 
   // Update local user state (e.g. new avatar)
   const updateUser = (updatedFields) => {
     setUser((prev) => {
       const updated = { ...prev, ...updatedFields };
-      localStorage.setItem('shopme_user', JSON.stringify(updated));
+      localStorage.setItem('shopsilo_user', JSON.stringify(updated));
       return updated;
     });
   };

@@ -11,7 +11,7 @@ export const WebSocketOrderAlertListener = () => {
   const wsRef = useRef(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('shopme_token');
+    const token = localStorage.getItem('shopsilo_token') || localStorage.getItem('shopme_token');
     if (!isMerchant || !token) return;
 
     const rawUrl = (import.meta.env.VITE_API_BASE_URL || 'https://api.shopsilo.in').trim();

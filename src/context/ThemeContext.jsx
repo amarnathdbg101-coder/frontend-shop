@@ -3,7 +3,7 @@
  * 
  * Hinglish Hint:
  * Dukaandar ke app me Dark mode aur Normal (Light) mode switch karta hai:
- * - LocalStorage me preference save karta hai ('shopme_theme')
+ * - LocalStorage me preference save karta hai ('shopsilo_theme')
  * - HTML root tag par data-theme="dark" / data-theme="light" set karta hai
  */
 
@@ -13,12 +13,12 @@ const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setThemeState] = useState(() => {
-    return localStorage.getItem('shopme_theme') || 'light';
+    return localStorage.getItem('shopsilo_theme') || 'light';
   });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('shopme_theme', theme);
+    localStorage.setItem('shopsilo_theme', theme);
   }, [theme]);
 
   const toggleTheme = () => {
