@@ -1,0 +1,17 @@
+{
+  "name": "ShopSilo Merchant OS",
+  "short_name": "ShopSilo OS",
+  "description": "Smart retail billing counter, inventory, and digital khata ledger for local shopkeepers.",
+  "start_url": "/merchant",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
