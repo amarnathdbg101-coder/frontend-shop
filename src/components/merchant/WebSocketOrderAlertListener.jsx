@@ -14,7 +14,7 @@ export const WebSocketOrderAlertListener = () => {
     const token = localStorage.getItem('shopme_token');
     if (!isMerchant || !token) return;
 
-    const rawUrl = (import.meta.env.VITE_API_BASE_URL || 'https://shop-me-t48p.onrender.com').trim();
+    const rawUrl = (import.meta.env.VITE_API_BASE_URL || 'https://api.shopsilo.in').trim();
     const wsHost = rawUrl.replace(/^http/, 'ws');
     const wsUrl = `${wsHost}/shops/me/ws?token=${token}`;
 
