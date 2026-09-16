@@ -21,6 +21,12 @@ export const staffApi = {
     return res.data;
   },
 
+  loginWithPin: async (pin) => {
+    const payload = typeof pin === 'object' ? pin : { pin };
+    const res = await client.post('/auth/staff-login', payload);
+    return res.data?.data || res.data;
+  },
+
   staffLogin: async ({ shop_id, phone, pin }) => {
     const res = await client.post('/auth/staff-login', {
       shop_id,

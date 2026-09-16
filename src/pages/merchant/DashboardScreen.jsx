@@ -54,6 +54,7 @@ import { AIVoiceKhataModal } from '../../components/merchant/AIVoiceKhataModal';
 import { BulkImportModal } from '../../components/merchant/BulkImportModal';
 import { playSoundboxAnnouncement } from '../../utils/soundbox';
 import { RealQRCode } from '../../components/common/RealQRCode';
+import { getImageUrl } from '../../utils/imageUrl';
 
 export const DashboardScreen = () => {
   const navigate = useNavigate();
@@ -183,7 +184,7 @@ export const DashboardScreen = () => {
     if (!shop) return;
     try {
       const nextStatus = !shop.is_active;
-      await shopApi.updateStatus(shop.id, nextStatus);
+      await shopApi.toggleShopStatus();
       refreshShop();
       playSoundboxAnnouncement(
         nextStatus ? 'Dukan ab Online hai. Grahak order kar sakte hain.' : 'Dukan ab Offline kar di gayi hai.'
@@ -203,7 +204,7 @@ export const DashboardScreen = () => {
     setShowQRModal(true);
     if (!qrCodeData && shop) {
       try {
-        const res = await shopApi.getQRCode(shop.id || 'me');
+        const res = await shopApi.getMyShopQR();
         setQrCodeData(res.data);
       } catch (err) {
         console.error('QR load failed:', err);
@@ -222,7 +223,7 @@ export const DashboardScreen = () => {
 
     try {
       setCreatingShop(true);
-      await shopApi.create(newShop);
+      await shopApi.createShop(newShop);
       await refreshShop();
     } catch (err) {
       setSetupError(err?.response?.data?.message || 'Dukan banate waqt error aaya. Dobara try karein.');
@@ -304,11 +305,28 @@ export const DashboardScreen = () => {
               type="button"
               onClick={() => {
                 if (window.confirm('Kya aap log out karna chahte hain?')) {
-                  const { logout } = useAuth();
+                  logout();
+                  navigate('/login');
                 }
               }}
-              style={{ display: 'none' }}
-            />
+              className="btn btn-sm"
+              style={{
+                fontSize: '0.76rem',
+                fontWeight: 700,
+                padding: '5px 10px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: '#ef4444',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <LogOut size={13} />
+              Logout
+            </button>
           </div>
         </div>
 

@@ -13,12 +13,25 @@ import client, { API_BASE_URL } from './client';
 export const posApi = {
   // Counter Sale create karna
   // payload: { customer_phone, items: [{ product_id, quantity, custom_price }], discount_amount, payment_method }
+  // Alias for createSale
+  recordSale: async (saleData) => {
+    const res = await client.post('/shops/me/pos/sale', saleData);
+    return res.data;
+  },
+
   createSale: async (saleData) => {
     const res = await client.post('/shops/me/pos/sale', saleData);
     return res.data; // { bill, receipt_url, loyalty_points_credited }
   },
 
   // Aaj ki bikri ki summary (Total Bills, Cash Sales, UPI Sales, Credit Sales)
+  // Alias for getDailySummary
+  getDailySalesSummary: async (date) => {
+    const params = date ? { date } : {};
+    const res = await client.get('/shops/me/pos/daily-summary', { params });
+    return res.data;
+  },
+
   getDailySummary: async (date) => {
     const params = date ? { date } : {};
     const res = await client.get('/shops/me/pos/daily-summary', { params });

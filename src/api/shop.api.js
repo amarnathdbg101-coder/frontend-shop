@@ -20,6 +20,12 @@ export const shopApi = {
   },
 
   // Merchant: Nayi shop register karna
+  // Alias for createShop
+  create: async (shopData) => {
+    const res = await client.post('/shops', shopData);
+    return res.data;
+  },
+
   createShop: async (shopData) => {
     const res = await client.post('/shops', shopData);
     return res.data;
@@ -32,12 +38,24 @@ export const shopApi = {
   },
 
   // Merchant: Dukan ko live (Open) ya close (Offline) karna
+  // Alias for toggleShopStatus
+  updateStatus: async () => {
+    const res = await client.patch('/shops/me/status');
+    return res.data;
+  },
+
   toggleShopStatus: async () => {
     const res = await client.patch('/shops/me/status');
     return res.data;
   },
 
   // Merchant: Apni dukan ka payment / storefront QR Code lena
+  // Alias for getMyShopQR
+  getQRCode: async () => {
+    const res = await client.get('/shops/me/qr');
+    return res.data;
+  },
+
   getMyShopQR: async () => {
     const res = await client.get('/shops/me/qr');
     return res.data;
