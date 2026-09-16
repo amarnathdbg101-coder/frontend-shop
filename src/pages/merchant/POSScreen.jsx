@@ -1,3 +1,4 @@
+import { printPOSInvoice } from '../../utils/pdfGenerator';
 /**
  * Counter POS (Point of Sale) Screen
  * 
@@ -820,22 +821,49 @@ export const POSScreen = () => {
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <a
-                  href={posApi.getReceiptUrl(billSuccess.bill?.bill_number)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-primary btn-block"
-                  style={{ textDecoration: 'none' }}
-                >
-                  <Printer size={16} /> Digital PDF Receipt Dekhein
-                </a>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setBillSuccess(null)}
-                >
-                  Band
-                </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => printPOSInvoice({ bill: billSuccess.bill, shop, format: 'thermal' })}
+                    className="btn btn-primary"
+                    style={{ fontWeight: 800, fontSize: '0.82rem', padding: '10px 8px' }}
+                  >
+                    <Printer size={16} /> Thermal Print
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => printPOSInvoice({ bill: billSuccess.bill, shop, format: 'standard' })}
+                    className="btn btn-secondary"
+                    style={{ fontWeight: 800, fontSize: '0.82rem', padding: '10px 8px' }}
+                  >
+                    <FileText size={16} /> A4 Tax Invoice
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const text = `🛒 *Tax Invoice - ${shop?.name || 'Store'}*\n📄 Bill No: ${billSuccess.bill?.bill_number}\n💰 Amount: ₹${billSuccess.bill?.final_amount}\n💳 Payment: ${(billSuccess.bill?.payment_method || 'cash').toUpperCase()}\n🔗 Digital PDF: ${posApi.getReceiptUrl(billSuccess.bill?.bill_number)}`;
+                      window.open(`https://wa.me/${(billSuccess.bill?.customer_phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                    }}
+                    className="btn"
+                    style={{ background: '#25D366', color: '#ffffff', border: 'none', fontWeight: 800, fontSize: '0.82rem' }}
+                  >
+                    <MessageSquare size={16} /> WhatsApp Share
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setBillSuccess(null)}
+                    style={{ fontWeight: 700 }}
+                  >
+                    New Bill (+)
+                  </button>
+                </div>
               </div>
             </div>
           </div>

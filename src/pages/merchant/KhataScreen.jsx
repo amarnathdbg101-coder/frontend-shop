@@ -1,3 +1,4 @@
+import { printKhataStatement } from '../../utils/pdfGenerator';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   BookOpen,
