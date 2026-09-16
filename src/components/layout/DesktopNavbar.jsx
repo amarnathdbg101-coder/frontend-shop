@@ -153,6 +153,30 @@ export const DesktopNavbar = () => {
 
           {/* Quick Actions & Preferences */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}>
+                      {/* Customer Marketplace Direct Link */}
+          <a
+            href="https://shopsilo.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary btn-sm"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '6px 12px',
+              color: 'var(--text-secondary)',
+              fontWeight: 700,
+              fontSize: '0.78rem',
+              borderRadius: 'var(--radius-full)',
+              textDecoration: 'none',
+              border: '1px solid var(--border-subtle)',
+            }}
+            title={isHindi ? 'ग्राहक हाइपरलोकल बाजार खोलें' : 'Open Customer Marketplace'}
+          >
+            <span>🛍️ {isHindi ? 'ग्राहक बाज़ार' : 'Marketplace'}</span>
+            <ExternalLink size={12} />
+          </a>
+
             {/* AI Copilot Trigger */}
             <button
               onClick={() => setIsCopilotOpen(true)}

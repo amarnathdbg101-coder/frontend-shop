@@ -2,11 +2,13 @@
 <html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8" />
+    <link rel="canonical" href="https://shop.shopsilo.in/" />
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2'><path d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-    <title>ShopSilo Merchant OS - Smart Counter POS, Inventory & Khata Ledger</title>
-    <meta name="description" content="ShopSilo Merchant OS - High-speed retail billing counter, real-time inventory management, customer khata ledger with WhatsApp reminders, and daily profit intelligence." />
+    <title>ShopSilo Merchant OS - Retail POS Billing, Stock & Khata Ledger</title>
+    <meta name="description" content="ShopSilo Merchant OS - High-speed retail billing counter, real-time inventory management, digital customer khata ledger with WhatsApp reminders, and daily profit analytics." />
+    <meta name="keywords" content="ShopSilo Merchant, shop owner portal, retail POS billing, digital khata book, inventory management, dukan software, shopsilo partner" />
     <meta name="theme-color" content="#4f46e5" />
     <meta name="color-scheme" content="light dark" />
 
@@ -15,15 +17,71 @@
     <meta property="og:title" content="ShopSilo Merchant OS - Retail Billing & Management Platform" />
     <meta property="og:description" content="Smart retail billing counter, real-time inventory management, and digital customer khata ledger." />
     <meta property="og:site_name" content="ShopSilo Partner" />
+    <meta property="og:url" content="https://shop.shopsilo.in/" />
+    <meta property="og:image" content="https://shop.shopsilo.in/favicon.svg" />
+
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ShopSilo Merchant OS - Retail Billing & Management Platform" />
+    <meta name="twitter:description" content="Smart retail billing counter, real-time inventory management, and digital customer khata ledger." />
+    <meta name="twitter:image" content="https://shop.shopsilo.in/favicon.svg" />
+
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          "name": "ShopSilo Merchant OS",
+          "url": "https://shop.shopsilo.in/",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "All",
+          "description": "Complete retail operating system for shopkeepers: High-speed POS Billing, Inventory Control, and Digital Khata Ledger.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "INR"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://shop.shopsilo.in/#website",
+          "url": "https://shop.shopsilo.in/",
+          "name": "ShopSilo Merchant OS",
+          "hasPart": [
+            {
+              "@type": "WebPage",
+              "name": "Customer Marketplace (shopsilo.in)",
+              "description": "Public hyperlocal marketplace for neighborhood store discovery.",
+              "url": "https://shopsilo.in/"
+            },
+            {
+              "@type": "WebPage",
+              "name": "Merchant Login",
+              "description": "Log into your ShopSilo Merchant OS account.",
+              "url": "https://shop.shopsilo.in/login"
+            },
+            {
+              "@type": "WebPage",
+              "name": "Merchant Registration",
+              "description": "Create a new shop and launch POS billing in 1 minute.",
+              "url": "https://shop.shopsilo.in/register"
+            }
+          ]
+        }
+      ]
+    }
+    </script>
 
     <!-- Google Identity Services -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     
-    <!-- Google Fonts: Inter & Noto Sans Devanagari -->
     <!-- Preconnect to backend API for faster requests -->
     <link rel="preconnect" href="https://api.shopsilo.in" crossorigin />
     <link rel="dns-prefetch" href="https://api.shopsilo.in" />
 
+    <!-- Google Fonts: Inter & Noto Sans Devanagari -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
