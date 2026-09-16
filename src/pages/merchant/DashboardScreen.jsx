@@ -35,6 +35,7 @@ import {
   Clock,
   Truck,
   Plus,
+  LogOut,
   MapPin,
   Flame,
   FileSpreadsheet,
@@ -56,7 +57,7 @@ import { RealQRCode } from '../../components/common/RealQRCode';
 
 export const DashboardScreen = () => {
   const navigate = useNavigate();
-  const { shop, refreshShop, user } = useAuth();
+  const { shop, refreshShop, user, logout } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [showEditShopModal, setShowEditShopModal] = useState(false);
@@ -234,39 +235,116 @@ export const DashboardScreen = () => {
   if (!shop) {
     return (
       <AppLayout title="Dukan Shuru Karein" showBack={false}>
+        {/* User Logged-in Profile Banner & Quick Logout */}
         <div
           style={{
             maxWidth: '560px',
-            margin: '30px auto',
-            background: '#ffffff',
-            borderRadius: '24px',
-            padding: '32px',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.06)',
-            border: '1px solid #e2e8f0',
+            margin: '16px auto 0 auto',
+            background: 'var(--bg-surface)',
+            borderRadius: '18px',
+            padding: '12px 18px',
+            border: '1px solid var(--border-subtle)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.03)',
           }}
         >
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div
+            onClick={() => navigate('/profile')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+            title="Meri Profile Dekhein"
+          >
             <div
               style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: '24px',
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                background: user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 800,
+                fontSize: '0.95rem',
+                overflow: 'hidden',
+                flexShrink: 0,
+              }}
+            >
+              {user?.avatar_url ? (
+                <img
+                  src={getImageUrl(user.avatar_url)}
+                  alt={user?.name || 'User'}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                (user?.name || user?.full_name)?.charAt(0)?.toUpperCase() || 'M'
+              )}
+            </div>
+            <div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                {user?.name || user?.full_name || 'Merchant User'}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                {user?.phone || user?.email || 'Logged in'} • <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Profile</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => navigate('/profile')}
+              className="btn btn-sm btn-secondary"
+              style={{ fontSize: '0.76rem', fontWeight: 700, padding: '5px 10px' }}
+            >
+              Profile
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('Kya aap log out karna chahte hain?')) {
+                  const { logout } = useAuth();
+                }
+              }}
+              style={{ display: 'none' }}
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            maxWidth: '560px',
+            margin: '12px auto 30px auto',
+            background: 'var(--bg-surface)',
+            borderRadius: '24px',
+            padding: '28px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.06)',
+            border: '1px solid var(--border-subtle)',
+          }}
+        >
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <div
+              style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '20px',
                 background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
                 color: '#ffffff',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: '16px',
+                marginBottom: '12px',
                 boxShadow: '0 10px 25px rgba(79, 70, 229, 0.3)',
               }}
             >
-              <Store size={38} />
+              <Store size={32} />
             </div>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
               Apni Dukan Shuru Karein
             </h2>
-            <p style={{ fontSize: '0.88rem', color: '#64748b', marginTop: '6px' }}>
-              Sirf 1 minute me apni dukan create karein aur POS Billing, Khata Book aur Online Store chalu karein.
+            <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+              Sirf 1 minute me apni dukan banayein aur POS Billing, Khata Book aur Online Store chalu karein.
             </p>
           </div>
 

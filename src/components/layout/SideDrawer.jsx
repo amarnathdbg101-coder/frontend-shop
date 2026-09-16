@@ -135,6 +135,16 @@ export const SideDrawer = ({ isOpen, onClose }) => {
         <div className="drawer-content">
           <div className="drawer-section-title">{isHindi ? 'काउंटर एवं बिलिंग' : 'BILLING & COUNTER'}</div>
           <div className="drawer-links-group">
+            <button className="drawer-link-btn" onClick={() => handleNavigate('/profile')}>
+              <div className="drawer-icon-bubble" style={{ background: '#e0e7ff', color: '#4338ca' }}>
+                <Settings size={18} />
+              </div>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div className="drawer-link-title">{isHindi ? 'मेरी प्रोफ़ाइल एवं सेटिंग्स' : 'My Profile & Settings'}</div>
+                <div className="drawer-link-sub">{isHindi ? 'खाता विवरण, फोटो व लॉगआउट' : 'Account details, photo & sign out'}</div>
+              </div>
+              <ChevronRight size={16} color="var(--text-muted)" />
+            </button>
             <button className="drawer-link-btn" onClick={() => handleNavigate('/merchant')}>
               <div className="drawer-icon-bubble" style={{ background: '#e0e7ff', color: '#4338ca' }}>
                 <LayoutDashboard size={18} />
