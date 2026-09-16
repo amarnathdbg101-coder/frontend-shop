@@ -362,8 +362,8 @@ export const AIVoiceKhataModal = ({ isOpen, onClose, customers = [], onConfirm }
               >
                 {parsedResult.type === 'CREDIT' ? '🔴 UDHAR (Credit)' : '🟢 JAMA (Payment)'}
               </span>
-              <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0f172a' }}>
-                ₹{parsedResult.amount.toLocaleString('en-IN')}
+              <span style={{ fontSize: '1.4rem', fontWeight: 900, color: parsedResult.type === 'CREDIT' ? '#dc2626' : '#16a34a' }}>
+                {parsedResult.type === 'CREDIT' ? '-' : '+'}₹{Number(parsedResult.amount).toLocaleString('en-IN')}
               </span>
             </div>
 

@@ -52,7 +52,7 @@ import { MerchantCopilotModal } from '../../components/common/MerchantCopilotMod
 import { EditShopModal } from '../../components/common/EditShopModal';
 import { AIVoiceKhataModal } from '../../components/merchant/AIVoiceKhataModal';
 import { BulkImportModal } from '../../components/merchant/BulkImportModal';
-import { playSoundboxAnnouncement } from '../../utils/soundbox';
+import { playSoundboxAnnouncement, speakSoundboxPayment } from '../../utils/soundbox';
 import { RealQRCode } from '../../components/common/RealQRCode';
 import { getImageUrl } from '../../utils/imageUrl';
 

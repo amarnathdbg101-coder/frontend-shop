@@ -41,7 +41,7 @@ import { AppLayout } from '../../components/layout/AppLayout';
 import { getImageUrl } from '../../utils/imageUrl';
 import { useDebounce } from '../../hooks/useDebounce';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { playSoundboxTone } from '../../utils/soundbox';
+import { playSoundboxTone, speakSoundboxPayment, speakKhataTransaction } from '../../utils/soundbox';
 import { AIVoicePOSModal } from '../../components/pos/AIVoicePOSModal';
 import { POSParchiModal } from '../../components/pos/POSParchiModal';
 import { KhataCustomerPickerModal } from '../../components/merchant/KhataCustomerPickerModal';

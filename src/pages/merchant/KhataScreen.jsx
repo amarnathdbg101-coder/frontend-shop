@@ -40,7 +40,7 @@ import { uploadApi } from '../../api/upload.api';
 import { useAuth } from '../../context/AuthContext';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { useDebounce } from '../../hooks/useDebounce';
-import { playSoundboxTone } from '../../utils/soundbox';
+import { playSoundboxTone, speakKhataTransaction, speakSoundboxPayment } from '../../utils/soundbox';
 import { KhataCustomerQRScannerModal } from '../../components/merchant/KhataCustomerQRScannerModal';
 import { AIVoiceKhataModal } from '../../components/merchant/AIVoiceKhataModal';
 import { getImageUrl } from '../../utils/imageUrl';
@@ -304,7 +304,7 @@ export const KhataScreen = () => {
           parchi_image_url: expressParchiUrl || undefined,
           items_summary: finalNotes,
         });
-        playSoundboxTone('credit');
+        speakKhataTransaction({ type: 'CREDIT', amount: numAmt, customerName: custName, shopName: shop?.name || 'शॉपसिलो' });
       } else {
         await khataApi.recordPayment(custPhone, {
           customer_name: custName,
@@ -312,7 +312,7 @@ export const KhataScreen = () => {
           payment_mode: 'cash',
           notes: finalNotes,
         });
-        playSoundboxTone('payment');
+        speakKhataTransaction({ type: 'PAYMENT', amount: numAmt, customerName: custName, shopName: shop?.name || 'शॉपसिलो' });
       }
 
       setShowExpressModal(false);
@@ -359,7 +359,7 @@ export const KhataScreen = () => {
         parchi_image_url: creditForm.parchi_image_url || undefined,
       });
 
-      playSoundboxTone('credit');
+      speakKhataTransaction({ type: 'CREDIT', amount: amt, customerName: cleanName, shopName: shop?.name || 'शॉपसिलो' });
       setShowAddCreditModal(false);
       setCreditForm({ customer_name: '', customer_mobile: '', amount: '', notes: '', bill_number: '', parchi_image_url: '' });
       await loadKhata(debouncedSearch);
@@ -1004,7 +1004,7 @@ export const KhataScreen = () => {
                             <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '10px' }}>
                               <div>
                                 <div style={{ fontWeight: 900, fontSize: '1.1rem', color: isCredit ? '#dc2626' : '#16a34a' }}>
-                                  {isCredit ? `+₹${tx.amount.toLocaleString('en-IN')}` : `-₹${tx.amount.toLocaleString('en-IN')}`}
+                                  {isCredit ? `-₹${Number(tx.amount).toLocaleString('en-IN')}` : `+₹${Number(tx.amount).toLocaleString('en-IN')}`}
                                 </div>
                                 <div style={{ fontSize: '0.72rem', color: '#64748b' }}>
                                   Bal: ₹{(tx.balance_after || tx.running_balance || 0).toLocaleString('en-IN')}

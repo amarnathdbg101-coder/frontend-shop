@@ -416,8 +416,8 @@ export function printKhataStatement({ customer, transactions = [], shop }) {
             <td class="center">
               <span class="${isCredit ? 'credit-badge' : 'payment-badge'}">${isCredit ? 'CREDIT' : 'PAYMENT'}</span>
             </td>
-            <td class="num" style="color: #dc2626; font-weight: ${isCredit ? '800' : '500'};">${isCredit ? formatInr(amt) : '-'}</td>
-            <td class="num" style="color: #16a34a; font-weight: ${!isCredit ? '800' : '500'};">${!isCredit ? formatInr(amt) : '-'}</td>
+            <td class="num" style="color: #dc2626; font-weight: ${isCredit ? '800' : '500'};">${isCredit ? '-' + formatInr(amt) : '-'}</td>
+            <td class="num" style="color: #16a34a; font-weight: ${!isCredit ? '800' : '500'};">${!isCredit ? '+' + formatInr(amt) : '-'}</td>
           </tr>
         `;
       }).join('')}
