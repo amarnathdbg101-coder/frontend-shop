@@ -34,6 +34,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { khataApi } from '../../api/khata.api';
+import { RealQRCode } from '../../components/common/RealQRCode';
 import { uploadApi } from '../../api/upload.api';
 import { useAuth } from '../../context/AuthContext';
 import { AppLayout } from '../../components/layout/AppLayout';
@@ -1669,11 +1670,7 @@ export const KhataScreen = () => {
                       padding: '8px',
                     }}
                   >
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(upiUri)}&size=200x200&margin=2`}
-                      alt="Counter UPI QR"
-                      style={{ width: '100%', height: '100%', display: 'block', borderRadius: '8px' }}
-                    />
+                    <RealQRCode value={upiUri} size={200} logoText="UPI" showDownload={true} downloadFilename="counter-upi-collect" />
                   </div>
 
                   <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
