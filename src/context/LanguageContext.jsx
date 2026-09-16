@@ -1,9 +1,3 @@
-/**
- * Enhanced Language Context for ShopMe Customer Web App
- * Supports strictly English ('en') and Standard Formal Hindi ('hi')
- * Centralized, zero-Hinglish, context-aware translation engine with parameter interpolation
- */
-
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { dictionaries } from '../locales/index.js';
 
@@ -50,14 +44,9 @@ export const LanguageProvider = ({ children }) => {
     }
   }, []);
 
-  /**
-   * Translate key with nested path support and variable replacement
-   * e.g. t('nav.explore') or t('products.units_left', { qty: 5 })
-   */
   const t = useCallback((pathKey, params = {}, fallback = '') => {
     if (!pathKey) return '';
     
-    // Support if user passed fallback as second arg string
     let fallbackText = typeof params === 'string' ? params : fallback;
     let variables = typeof params === 'object' && params !== null ? params : {};
 
@@ -75,24 +64,18 @@ export const LanguageProvider = ({ children }) => {
       return typeof current === 'string' ? current : undefined;
     };
 
-    // 1. Check selected language dictionary
     let value = resolveKey(dictionaries[language], pathKey);
-
-    // 2. Fallback to English dictionary
     if (!value && language !== 'en') {
       value = resolveKey(dictionaries.en, pathKey);
     }
-
-    // 3. Fallback to passed fallback text or key itself
     if (!value) {
       value = fallbackText || pathKey;
     }
 
-    // 4. Interpolate variables {{var}} or {var}
     if (variables && typeof variables === 'object') {
       Object.keys(variables).forEach((varName) => {
         const regexDouble = new RegExp(`{{\\s*${varName}\\s*}}`, 'g');
-        const regexSingle = new RegExp(`{\\s*${varName}\\s*`, 'g');
+        const regexSingle = new RegExp(`{\\s*${varName}\\s*}`, 'g');
         value = value.replace(regexDouble, String(variables[varName]));
         value = value.replace(regexSingle, String(variables[varName]));
       });

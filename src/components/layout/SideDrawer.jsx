@@ -1,10 +1,6 @@
 /**
  * Shop Owner SideDrawer Component (Dukan OS Navigation)
- * 
- * Hinglish Hint:
- * Dukaandar (Merchant) ka dedicated sliding side menu:
- * - Main Billing & Counter: Dashboard, POS, Inventory, Khata Book, Mandi Procurement List
- * - Dukan Operations: Pocket Profit, Daily Expenses, Customer Pickup Verification, Shop Settings
+ * Full bilingual support & comprehensive retail operations links
  */
 
 import React, { useEffect } from 'react';
@@ -19,16 +15,21 @@ import {
   TrendingUp,
   Wallet,
   ShieldCheck,
-  User,
+  Tag,
+  Users,
+  Settings,
   LogOut,
   ChevronRight,
+  ExternalLink,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { getImageUrl } from '../../utils/imageUrl';
 import { ThemeLanguageBar } from '../common/ThemeLanguageBar';
 
 export const SideDrawer = ({ isOpen, onClose }) => {
   const { user, shop, isAuthenticated, logout } = useAuth();
+  const { isHindi } = useLanguage();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export const SideDrawer = ({ isOpen, onClose }) => {
   }, [isOpen]);
 
   const handleLogout = () => {
-    if (window.confirm('Kya aap sure hain ki aap logout karna chahte hain?')) {
+    if (window.confirm(isHindi ? 'क्या आप निश्चित रूप से लॉग आउट करना चाहते हैं?' : 'Are you sure you want to log out?')) {
       logout();
       onClose();
       navigate('/login');
@@ -72,7 +73,6 @@ export const SideDrawer = ({ isOpen, onClose }) => {
       />
 
       <aside className={`side-drawer ${isOpen ? 'open' : ''}`}>
-        {/* Drawer Header */}
         <div className="drawer-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
             <div
@@ -80,14 +80,14 @@ export const SideDrawer = ({ isOpen, onClose }) => {
                 width: '42px',
                 height: '42px',
                 borderRadius: '50%',
-                background: user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, #4f46e5 0%, #312e81 100%)',
+                background: user?.avatar_url ? 'transparent' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                 color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 800,
                 fontSize: '1.1rem',
-                boxShadow: '0 4px 12px rgba(79, 70, 229, 0.35)',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)',
                 flexShrink: 0,
                 overflow: 'hidden',
               }}
@@ -104,16 +104,16 @@ export const SideDrawer = ({ isOpen, onClose }) => {
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontWeight: 800, fontSize: '0.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {user ? user.name : 'Shop Owner'}
+                {shop ? shop.name : (user?.name || (isHindi ? 'दुकानदार' : 'Merchant'))}
               </div>
               <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {user ? user.phone || user.email : 'Dukan Management'}
+                {user ? user.phone || user.email : (isHindi ? 'शॉपमी मर्चेंट ओएस' : 'ShopMe Merchant OS')}
               </div>
               <div style={{ marginTop: '2px' }}>
                 <span
                   style={{
-                    backgroundColor: '#e0e7ff',
-                    color: '#4338ca',
+                    backgroundColor: shop?.is_active ? '#dcfce7' : '#fee2e2',
+                    color: shop?.is_active ? '#15803d' : '#b91c1c',
                     fontSize: '0.68rem',
                     fontWeight: 700,
                     padding: '2px 7px',
@@ -121,69 +121,27 @@ export const SideDrawer = ({ isOpen, onClose }) => {
                     display: 'inline-block',
                   }}
                 >
-                  Dukaandar (Merchant)
+                  {shop?.is_active ? (isHindi ? 'दुकान चालू' : 'Shop Online') : (isHindi ? 'दुकान बंद' : 'Shop Offline')}
                 </span>
               </div>
             </div>
           </div>
 
-          <button onClick={onClose} className="drawer-close-btn" title="Menu Band Karein">
+          <button onClick={onClose} className="drawer-close-btn" title={isHindi ? 'मेनू बंद करें' : 'Close Menu'}>
             <X size={20} />
           </button>
         </div>
 
-        {/* Shop Live Status Card */}
-        {shop && (
-          <div className="drawer-shop-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ minWidth: 0, flex: 1, marginRight: '8px' }}>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
-                  Aapki Dukan
-                </div>
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {shop.name}
-                </div>
-              </div>
-              <span
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  padding: '3px 8px',
-                  borderRadius: 'var(--radius-full)',
-                  backgroundColor: shop.is_active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                  color: shop.is_active ? '#065f46' : '#991b1b',
-                  flexShrink: 0,
-                }}
-              >
-                <span
-                  style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    backgroundColor: shop.is_active ? '#10b981' : '#ef4444',
-                  }}
-                />
-                {shop.is_active ? 'Khuli Hai' : 'Band'}
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Drawer Body */}
         <div className="drawer-content">
-          {/* Primary Counter Navigation */}
-          <div className="drawer-section-title">MAIN BILLING & COUNTER</div>
+          <div className="drawer-section-title">{isHindi ? 'काउंटर एवं बिलिंग' : 'BILLING & COUNTER'}</div>
           <div className="drawer-links-group">
             <button className="drawer-link-btn" onClick={() => handleNavigate('/merchant')}>
               <div className="drawer-icon-bubble" style={{ background: '#e0e7ff', color: '#4338ca' }}>
                 <LayoutDashboard size={18} />
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
-                <div className="drawer-link-title">Dashboard Overview</div>
-                <div className="drawer-link-sub">Aaj ki bikri aur summary</div>
+                <div className="drawer-link-title">{isHindi ? 'दुकान डैशबोर्ड' : 'Shop Dashboard'}</div>
+                <div className="drawer-link-sub">{isHindi ? 'दैनिक बिक्री, अलर्ट्स व मुख्य मेट्रिक्स' : 'Daily sales, alerts & key metrics'}</div>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
@@ -193,58 +151,55 @@ export const SideDrawer = ({ isOpen, onClose }) => {
                 <Receipt size={18} />
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
-                <div className="drawer-link-title">Fast POS Billing</div>
-                <div className="drawer-link-sub">Counter bill aur receipt print</div>
+                <div className="drawer-link-title">{isHindi ? 'पीओएस बिलिंग काउंटर' : 'POS Billing Counter'}</div>
+                <div className="drawer-link-sub">{isHindi ? 'त्वरित पर्ची बिलिंग, यूपीआई क्यूआर एवं वॉयस' : 'Fast billing, instant UPI QR & voice'}</div>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
 
             <button className="drawer-link-btn" onClick={() => handleNavigate('/merchant/inventory')}>
-              <div className="drawer-icon-bubble" style={{ background: '#ffedd5', color: '#c2410c' }}>
+              <div className="drawer-icon-bubble" style={{ background: '#fef3c7', color: '#d97706' }}>
                 <Package size={18} />
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
-                <div className="drawer-link-title">Stock & Catalog</div>
-                <div className="drawer-link-sub">Photo upload, barcodes, reorder PDF</div>
+                <div className="drawer-link-title">{isHindi ? 'स्टॉक एवं कैटलॉग' : 'Inventory & Catalog'}</div>
+                <div className="drawer-link-sub">{isHindi ? 'उत्पाद जोड़ें, बारकोड स्कैन व स्टॉक अलर्ट्स' : 'Manage products, barcode & stock alerts'}</div>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
 
             <button className="drawer-link-btn" onClick={() => handleNavigate('/merchant/khata')}>
-              <div className="drawer-icon-bubble" style={{ background: '#fee2e2', color: '#b91c1c' }}>
+              <div className="drawer-icon-bubble" style={{ background: '#fee2e2', color: '#dc2626' }}>
                 <BookOpen size={18} />
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
-                <div className="drawer-link-title">Customer Khata</div>
-                <div className="drawer-link-sub">Udhar ledger aur payment reminder</div>
+                <div className="drawer-link-title">{isHindi ? 'डिजिटल खाता बही' : 'Digital Khata Book'}</div>
+                <div className="drawer-link-sub">{isHindi ? 'ग्राहक उधारी, व्हाट्सएप तकादा व रसीद' : 'Customer ledger & WhatsApp reminders'}</div>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
 
-            <button className="drawer-link-btn" onClick={() => handleNavigate('/merchant/procurement-list')}>
-              <div className="drawer-icon-bubble" style={{ background: '#e0f2fe', color: '#0284c7' }}>
+            <button className="drawer-link-btn" onClick={() => handleNavigate('/merchant/procurement')}>
+              <div className="drawer-icon-bubble" style={{ background: '#ede9fe', color: '#7c3aed' }}>
                 <ClipboardList size={18} />
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
-                <div className="drawer-link-title">Mandi Procurement List</div>
-                <div className="drawer-link-sub">Mandi khareed suchi, low stock & PDF</div>
+                <div className="drawer-link-title">{isHindi ? 'मंडी खरीदारी सूची' : 'Procurement List'}</div>
+                <div className="drawer-link-sub">{isHindi ? 'थोक खरीदारी सूची व ऑटो-इम्पोर्ट' : 'Mandi purchase orders & low-stock import'}</div>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
           </div>
 
-          {/* Dukan Operations & Reports */}
-          <div className="drawer-section-title" style={{ marginTop: '16px' }}>
-            DUKAN OPERATIONS & PROFIT
-          </div>
+          <div className="drawer-section-title" style={{ marginTop: '16px' }}>{isHindi ? 'दुकान ऑपरेशंस' : 'SHOP OPERATIONS'}</div>
           <div className="drawer-links-group">
             <button className="drawer-link-btn" onClick={() => handleNavigate('/merchant/analytics')}>
-              <div className="drawer-icon-bubble" style={{ background: '#ecfdf5', color: '#047857' }}>
+              <div className="drawer-icon-bubble" style={{ background: '#ccfbf1', color: '#0d9488' }}>
                 <TrendingUp size={18} />
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
-                <div className="drawer-link-title">Pocket Profit & Sales</div>
-                <div className="drawer-link-sub">Asli munafa aur sales analysis</div>
+                <div className="drawer-link-title">{isHindi ? 'दुकान का असली मुनाफ़ा' : 'Pocket Profit Analytics'}</div>
+                <div className="drawer-link-sub">{isHindi ? 'बिक्री, लागत एवं शुद्ध बचत विश्लेषण' : 'Revenue, cost & net profit analytics'}</div>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
@@ -254,55 +209,54 @@ export const SideDrawer = ({ isOpen, onClose }) => {
                 <Wallet size={18} />
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
-                <div className="drawer-link-title">Dukan Ke Roz Ke Kharche</div>
-                <div className="drawer-link-sub">Rent, bijli, chai aur staff kharche</div>
+                <div className="drawer-link-title">{isHindi ? 'दैनिक दुकान के खर्चे' : 'Daily Shop Expenses'}</div>
+                <div className="drawer-link-sub">{isHindi ? 'चाय-नाश्ता, किराया, बिजली व वेतन' : 'Log daily operational expenses'}</div>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
 
             <button className="drawer-link-btn" onClick={() => handleNavigate('/merchant/pickups')}>
-              <div className="drawer-icon-bubble" style={{ background: '#f3e8ff', color: '#7e22ce' }}>
+              <div className="drawer-icon-bubble" style={{ background: '#dbeafe', color: '#1d4ed8' }}>
                 <ShieldCheck size={18} />
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
-                <div className="drawer-link-title">Pickup Counter Verify</div>
-                <div className="drawer-link-sub">Customer OTP verify & deliver</div>
+                <div className="drawer-link-title">{isHindi ? 'ग्राहक पिकअप सत्यापन' : 'Customer Pickup Verification'}</div>
+                <div className="drawer-link-sub">{isHindi ? '6-अंकीय ओटीपी कोड से सामान हैंडओवर' : '6-digit OTP verification & order release'}</div>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
 
-            <button className="drawer-link-btn" onClick={() => handleNavigate('/profile')}>
-              <div className="drawer-icon-bubble" style={{ background: '#f1f5f9', color: '#334155' }}>
-                <User size={18} />
+            <button className="drawer-link-btn" onClick={() => handleNavigate('/merchant/offers')}>
+              <div className="drawer-icon-bubble" style={{ background: '#fce7f3', color: '#be185d' }}>
+                <Tag size={18} />
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
-                <div className="drawer-link-title">Shop Settings & Profile</div>
-                <div className="drawer-link-sub">Logo, banners, timings, QR Code</div>
+                <div className="drawer-link-title">{isHindi ? 'ऑफ़र्स एवं डिस्काउंट्स' : 'Offers & Promotions'}</div>
+                <div className="drawer-link-sub">{isHindi ? 'दुकान के लाइव डिस्काउंट्स प्रबंधित करें' : 'Create & publish promotional deals'}</div>
               </div>
               <ChevronRight size={16} color="var(--text-muted)" />
             </button>
           </div>
 
-          {/* Theme & Language Switcher Bar */}
-          <div style={{ marginTop: '16px', marginBottom: '8px' }}>
+          <div style={{ marginTop: '20px' }}>
+            <div className="drawer-section-title">{isHindi ? 'थीम एवं भाषा सेटिंग्स' : 'THEME & LANGUAGE'}</div>
             <ThemeLanguageBar />
           </div>
         </div>
 
-        {/* Drawer Footer */}
         <div className="drawer-footer">
           {isAuthenticated ? (
             <button className="btn btn-outline btn-block" onClick={handleLogout} style={{ gap: '8px', color: 'var(--color-danger)', borderColor: 'rgba(239, 68, 68, 0.3)' }}>
               <LogOut size={16} />
-              <span>Dukan OS Se Logout Karein</span>
+              <span>{isHindi ? 'लॉग आउट करें' : 'Sign Out'}</span>
             </button>
           ) : (
             <button className="btn btn-primary btn-block" onClick={() => handleNavigate('/login')}>
-              <span>Merchant Login</span>
+              <span>{isHindi ? 'लॉगिन करें' : 'Sign In'}</span>
             </button>
           )}
           <div style={{ textAlign: 'center', fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '10px' }}>
-            ShopMe Partner OS • v1.0
+            ShopMe Merchant OS • v1.0
           </div>
         </div>
       </aside>

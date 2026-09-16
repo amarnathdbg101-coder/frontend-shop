@@ -1,13 +1,6 @@
 /**
  * Merchant Bottom Navigation Bar
- * 
- * Hinglish Hint:
- * Dukaandar ke liye dedicated counter bottom bar:
- * - Home (Dashboard overview)
- * - POS (Quick billing counter)
- * - Stock (Inventory & wholesale)
- * - Khata (Udhaar ledger)
- * - Profile (Shop settings)
+ * Optimized for quick counter billing and khata management
  */
 
 import React from 'react';
@@ -20,9 +13,11 @@ import {
   User,
 } from 'lucide-react';
 import { usePOS } from '../../context/POSContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const BottomNav = () => {
   const { itemCount } = usePOS();
+  const { isHindi } = useLanguage();
 
   return (
     <nav className="bottom-nav" role="navigation" aria-label="Merchant counter navigation">
@@ -32,7 +27,7 @@ export const BottomNav = () => {
         className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
       >
         <LayoutDashboard size={20} />
-        <span>Home</span>
+        <span>{isHindi ? 'होम' : 'Home'}</span>
       </NavLink>
 
       <NavLink
@@ -40,7 +35,7 @@ export const BottomNav = () => {
         className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
       >
         <Receipt size={20} />
-        <span>POS</span>
+        <span>{isHindi ? 'बिलिंग' : 'POS'}</span>
         {itemCount > 0 && <span className="nav-badge">{itemCount}</span>}
       </NavLink>
 
@@ -49,7 +44,7 @@ export const BottomNav = () => {
         className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
       >
         <Package size={20} />
-        <span>Stock</span>
+        <span>{isHindi ? 'स्टॉक' : 'Stock'}</span>
       </NavLink>
 
       <NavLink
@@ -57,7 +52,7 @@ export const BottomNav = () => {
         className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
       >
         <BookOpen size={20} />
-        <span>Khata</span>
+        <span>{isHindi ? 'खाता' : 'Khata'}</span>
       </NavLink>
 
       <NavLink
@@ -65,7 +60,7 @@ export const BottomNav = () => {
         className={({ isActive }) => `bottom-nav-item ${isActive ? 'active' : ''}`}
       >
         <User size={20} />
-        <span>Profile</span>
+        <span>{isHindi ? 'प्रोफ़ाइल' : 'Profile'}</span>
       </NavLink>
     </nav>
   );

@@ -1,24 +1,6 @@
 /**
  * Merchant Desktop Top Navbar Component (Screens >= 1024px)
- * 
- * Hinglish Hint:
- * Laptop & Desktop screens ke liye premium Dukan OS Header:
- * - Dukan ka Brand & Logo
- * - Live Online / Offline Status Indicator
- * - Navigation links:
- *   - Dashboard (Overview)
- *   - POS Billing (Counter terminal with live cart badge)
- *   - Stock & Catalog (Inventory)
- *   - Khata Book (Udhar ledger)
- *   - Mandi List (Procurement)
- *   - Pocket Profit (Analytics)
- *   - Daily Expenses (Kharche)
- *   - Pickup Counter (OTP verify)
- * - Actions:
- *   - Customer Storefront Link (View shop as a customer)
- *   - AI Merchant Copilot trigger
- *   - Dark / Light Mode Switcher
- *   - Merchant Profile / Settings Avatar
+ * SaaS-grade retail management header with bilingual language switch & quick actions
  */
 
 import React, { useState } from 'react';
@@ -41,6 +23,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { usePOS } from '../../context/POSContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { getImageUrl } from '../../utils/imageUrl';
 import { MerchantCopilotModal } from '../common/MerchantCopilotModal';
 
@@ -49,92 +32,65 @@ export const DesktopNavbar = () => {
   const { user, shop } = useAuth();
   const { itemCount } = usePOS();
   const { isDark, toggleTheme } = useTheme();
+  const { language, setLanguage, isHindi } = useLanguage();
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
 
   return (
     <>
       <header className="desktop-navbar" role="banner">
         <div className="desktop-navbar-inner">
-          {/* Left: Brand & Live Dukan Status */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
+          {/* Shop Brand & Status */}
+          <div
+            onClick={() => navigate('/merchant')}
+            style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', flexShrink: 0 }}
+          >
             <div
-              onClick={() => navigate('/merchant')}
-              style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: 'var(--radius-md)',
+                background: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 900,
+                fontSize: '1.2rem',
+                boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)',
+              }}
             >
-              <div
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'linear-gradient(135deg, #4f46e5 0%, #312e81 100%)',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 900,
-                  fontSize: '1.2rem',
-                  boxShadow: '0 4px 10px rgba(79, 70, 229, 0.3)',
-                }}
-              >
-                <Store size={22} />
-              </div>
-              <div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.1 }}>
-                  {shop?.name || 'ShopMe Merchant'}
-                </div>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--color-primary)', letterSpacing: '0.4px' }}>
-                  DUKAN OS • {shop?.category || 'Retail Counter'}
-                </div>
-              </div>
+              <Store size={22} />
             </div>
-
-            {/* Shop Live Status Dot */}
-            {shop && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 10px',
-                  borderRadius: 'var(--radius-full)',
-                  backgroundColor: shop.is_active ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                  color: shop.is_active ? '#065f46' : '#991b1b',
-                  fontSize: '0.74rem',
-                  fontWeight: 700,
-                }}
-              >
+            <div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.1 }}>
+                {shop?.name || (isHindi ? 'दुकानदार ओएस' : 'Merchant OS')}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
                 <span
                   style={{
                     width: '7px',
                     height: '7px',
                     borderRadius: '50%',
-                    backgroundColor: shop.is_active ? '#10b981' : '#ef4444',
-                    boxShadow: shop.is_active ? '0 0 6px #10b981' : 'none',
+                    backgroundColor: shop?.is_active ? '#10b981' : '#ef4444',
+                    display: 'inline-block',
                   }}
                 />
-                <span>{shop.is_active ? 'Online (Khuli Hai)' : 'Offline (Band)'}</span>
+                <span style={{ fontSize: '0.68rem', fontWeight: 700, color: shop?.is_active ? '#059669' : '#dc2626' }}>
+                  {shop?.is_active ? (isHindi ? 'दुकान चालू (Online)' : 'Online Store') : (isHindi ? 'दुकान बंद (Offline)' : 'Offline')}
+                </span>
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Center: Desktop Navigation Links */}
-          <nav
-            style={{
-              margin: '0 auto',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              overflowX: 'auto',
-            }}
-            aria-label="Merchant desktop navigation"
-          >
+          {/* Navigation links */}
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '4px', marginLeft: 'auto' }}>
             <NavLink
               to="/merchant"
               end
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <LayoutDashboard size={17} />
-              <span>Dashboard</span>
+              <span>{isHindi ? 'डैशबोर्ड' : 'Dashboard'}</span>
             </NavLink>
 
             <NavLink
@@ -142,8 +98,8 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <Receipt size={17} />
-              <span>POS Billing</span>
-              {itemCount > 0 && <span className="desktop-nav-badge">{itemCount}</span>}
+              <span>{isHindi ? 'बिलिंग काउंटर' : 'POS Billing'}</span>
+              {itemCount > 0 && <span className="nav-badge" style={{ position: 'static', marginLeft: '4px' }}>{itemCount}</span>}
             </NavLink>
 
             <NavLink
@@ -151,7 +107,7 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <Package size={17} />
-              <span>Stock & Catalog</span>
+              <span>{isHindi ? 'स्टॉक एवं उत्पाद' : 'Inventory'}</span>
             </NavLink>
 
             <NavLink
@@ -159,15 +115,15 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <BookOpen size={17} />
-              <span>Customer Khata</span>
+              <span>{isHindi ? 'खाता बही' : 'Khata Ledger'}</span>
             </NavLink>
 
             <NavLink
-              to="/merchant/procurement-list"
+              to="/merchant/procurement"
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <ClipboardList size={17} />
-              <span>Mandi List</span>
+              <span>{isHindi ? 'मंडी खरीदारी' : 'Procurement'}</span>
             </NavLink>
 
             <NavLink
@@ -175,7 +131,7 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <TrendingUp size={17} />
-              <span>Pocket Profit</span>
+              <span>{isHindi ? 'मुनाफ़ा' : 'Profit'}</span>
             </NavLink>
 
             <NavLink
@@ -183,7 +139,7 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <Wallet size={17} />
-              <span>Kharche</span>
+              <span>{isHindi ? 'खर्चे' : 'Expenses'}</span>
             </NavLink>
 
             <NavLink
@@ -191,130 +147,150 @@ export const DesktopNavbar = () => {
               className={({ isActive }) => `desktop-nav-link ${isActive ? 'active' : ''}`}
             >
               <ShieldCheck size={17} />
-              <span>Pickups</span>
+              <span>{isHindi ? 'पिकअप' : 'Pickups'}</span>
             </NavLink>
           </nav>
 
-          {/* Right: Storefront link, Copilot, Theme toggle, Profile */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {/* View Customer Storefront */}
-            {shop?.slug && (
-              <a
-                href={`/shop/${shop.slug}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  backgroundColor: 'var(--bg-surface-subtle)',
-                  color: 'var(--text-primary)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '7px 12px',
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  textDecoration: 'none',
-                  transition: 'all 0.15s ease',
-                }}
-                title="Customer Storefront Nayi Tab me Kholein"
-              >
-                <ExternalLink size={14} />
-                <span>Storefront</span>
-              </a>
-            )}
-
-            {/* AI Copilot Button */}
+          {/* Quick Actions & Preferences */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}>
+            {/* AI Copilot Trigger */}
             <button
               onClick={() => setIsCopilotOpen(true)}
+              className="btn btn-secondary btn-sm"
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '5px',
-                background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.12) 0%, rgba(99, 102, 241, 0.08) 100%)',
+                gap: '6px',
+                padding: '6px 12px',
+                background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.12) 0%, rgba(147, 51, 234, 0.12) 100%)',
+                borderColor: 'rgba(79, 70, 229, 0.3)',
                 color: 'var(--color-primary)',
-                border: '1px solid rgba(79, 70, 229, 0.3)',
-                borderRadius: 'var(--radius-md)',
-                padding: '7px 12px',
+                fontWeight: 800,
                 fontSize: '0.8rem',
-                fontWeight: 700,
-                cursor: 'pointer',
               }}
-              title="Shop AI Assistant"
+              title={isHindi ? 'शॉपमी एआई असिस्टेंट' : 'ShopMe AI Assistant'}
             >
-              <Bot size={15} />
-              <span>AI Copilot</span>
+              <Bot size={16} />
+              <span>{isHindi ? 'एआई कोपायलट' : 'AI Copilot'}</span>
             </button>
 
-            {/* Dark / Light Mode Switcher */}
+            {/* Language Switcher Pill */}
+            <div
+              style={{
+                display: 'flex',
+                background: 'var(--bg-surface-subtle)',
+                border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-full)',
+                padding: '2px',
+              }}
+              role="radiogroup"
+              aria-label="Language selection"
+            >
+              <button
+                onClick={() => setLanguage('hi')}
+                style={{
+                  border: 'none',
+                  background: isHindi ? 'var(--color-primary)' : 'transparent',
+                  color: isHindi ? '#ffffff' : 'var(--text-secondary)',
+                  fontWeight: 700,
+                  fontSize: '0.76rem',
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                title="हिंदी भाषा चुनें"
+              >
+                हिंदी
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                style={{
+                  border: 'none',
+                  background: !isHindi ? 'var(--color-primary)' : 'transparent',
+                  color: !isHindi ? '#ffffff' : 'var(--text-secondary)',
+                  fontWeight: 700,
+                  fontSize: '0.76rem',
+                  padding: '4px 10px',
+                  borderRadius: 'var(--radius-full)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+                title="Select English language"
+              >
+                EN
+              </button>
+            </div>
+
+            {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
               style={{
-                background: 'transparent',
+                background: 'var(--bg-surface-subtle)',
                 border: '1px solid var(--border-subtle)',
-                cursor: 'pointer',
+                borderRadius: '50%',
+                width: '36px',
+                height: '36px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '36px',
-                height: '36px',
-                borderRadius: 'var(--radius-md)',
+                cursor: 'pointer',
                 color: 'var(--text-primary)',
               }}
-              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              title={isDark ? (isHindi ? 'लाइट मोड' : 'Light Mode') : (isHindi ? 'डार्क मोड' : 'Dark Mode')}
             >
-              {isDark ? <Sun size={18} color="#fbbf24" /> : <Moon size={18} />}
+              {isDark ? <Sun size={17} color="#fbbf24" /> : <Moon size={17} />}
             </button>
 
-            {/* Merchant Profile Avatar */}
-            {user ? (
-              <button
-                onClick={() => navigate('/profile')}
+            {/* Profile Avatar */}
+            <button
+              onClick={() => navigate('/profile')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'var(--bg-surface-subtle)',
+                border: '1px solid var(--border-subtle)',
+                padding: '4px 10px 4px 4px',
+                borderRadius: 'var(--radius-full)',
+                cursor: 'pointer',
+              }}
+            >
+              <div
                 style={{
-                  width: '36px',
-                  height: '36px',
+                  width: '30px',
+                  height: '30px',
                   borderRadius: '50%',
-                  background: user.avatar_url ? 'transparent' : 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)',
+                  background: '#10b981',
                   color: '#ffffff',
-                  border: 'none',
-                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontWeight: 800,
-                  fontSize: '0.85rem',
-                  boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)',
+                  fontSize: '0.8rem',
                   overflow: 'hidden',
-                  padding: 0,
                 }}
-                title="Dukan Settings & Profile"
               >
-                {user.avatar_url ? (
+                {user?.avatar_url ? (
                   <img
                     src={getImageUrl(user.avatar_url)}
-                    alt={user?.name || user?.full_name}
+                    alt={user.name || user.full_name}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 ) : (
                   (user?.name || user?.full_name)?.charAt(0)?.toUpperCase() || 'M'
                 )}
-              </button>
-            ) : (
-              <button
-                onClick={() => navigate('/login')}
-                className="btn btn-primary btn-sm"
-              >
-                Login
-              </button>
-            )}
+              </div>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                {user?.name || user?.full_name || (isHindi ? 'मेरी दुकान' : 'My Shop')}
+              </span>
+            </button>
           </div>
         </div>
       </header>
 
       {/* AI Copilot Modal */}
-      {isCopilotOpen && (
-        <MerchantCopilotModal isOpen={isCopilotOpen} onClose={() => setIsCopilotOpen(false)} />
-      )}
+      <MerchantCopilotModal isOpen={isCopilotOpen} onClose={() => setIsCopilotOpen(false)} />
     </>
   );
 };
