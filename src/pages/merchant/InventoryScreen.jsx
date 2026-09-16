@@ -1126,32 +1126,108 @@ export const InventoryScreen = () => {
                 </div>
               </div>
 
-              {/* Price & Cost Price */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <div className="form-group">
-                  <label className="form-label">Selling Price (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    className="form-input"
-                    placeholder="999"
-                    value={newProductForm.price}
-                    onChange={(e) => setNewProductForm({ ...newProductForm, price: e.target.value })}
-                  />
+              {/* Comprehensive Pricing & Profit Architecture */}
+              <div style={{ backgroundColor: 'var(--bg-surface-subtle)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', marginBottom: '12px' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>💰 MRP, Bechan Rate & Munafa Setup</span>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Cost Price (Kharid ₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="form-input"
-                    placeholder="750"
-                    value={newProductForm.cost_price}
-                    onChange={(e) => setNewProductForm({ ...newProductForm, cost_price: e.target.value })}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                      MRP (Packaging Rate ₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      placeholder="e.g. 120"
+                      value={newProductForm.compare_price}
+                      onChange={(e) => setNewProductForm({ ...newProductForm, compare_price: e.target.value })}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Customer ko % discount dikhega</span>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                      Selling Price (Dukan Rate ₹) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      className="form-input"
+                      placeholder="e.g. 100"
+                      value={newProductForm.price}
+                      onChange={(e) => setNewProductForm({ ...newProductForm, price: e.target.value })}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Standard counter bikri rate</span>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                      Cost Price (Kharid Mandi ₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      placeholder="e.g. 75"
+                      value={newProductForm.cost_price}
+                      onChange={(e) => setNewProductForm({ ...newProductForm, cost_price: e.target.value })}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Profit/Loss hisaab ke liye</span>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-danger)' }}>
+                      Min Floor Price (Nyunatam ₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      placeholder="e.g. 80"
+                      value={newProductForm.floor_price}
+                      onChange={(e) => setNewProductForm({ ...newProductForm, floor_price: e.target.value })}
+                      style={{ borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Isse kam me POS bill nahi banega</span>
+                  </div>
                 </div>
+
+                {/* Price Visibility Switch */}
+                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Online Customer Ko Price Dikhayein?
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                      {newProductForm.is_price_public ? '✅ Rate & MRP online public dikhega' : '🔒 Price chupa rahega ("मूल्य पूछताछ पर / भाव-ताव")'}
+                    </div>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '6px' }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(newProductForm.is_price_public)}
+                      onChange={(e) => setNewProductForm({ ...newProductForm, is_price_public: e.target.checked })}
+                      style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>
+                      {newProductForm.is_price_public ? 'Public' : 'Hidden'}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Real-time Profit & Margin Indicator */}
+                {Number(newProductForm.price) > 0 && Number(newProductForm.cost_price) > 0 && (
+                  <div style={{ marginTop: '10px', backgroundColor: 'var(--bg-surface)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Expected Profit:</span>
+                    <strong style={{ color: Number(newProductForm.price) >= Number(newProductForm.cost_price) ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                      +₹{(Number(newProductForm.price) - Number(newProductForm.cost_price)).toFixed(2)} ({Math.round(((Number(newProductForm.price) - Number(newProductForm.cost_price)) / Number(newProductForm.price)) * 100)}% Margin)
+                    </strong>
+                  </div>
+                )}
               </div>
 
               {/* Stock Quantity & Minimum Stock Threshold */}
@@ -1590,30 +1666,106 @@ export const InventoryScreen = () => {
                 )}
               </div>
 
-              {/* Price & Cost Price */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                <div className="form-group">
-                  <label className="form-label">Selling Price (₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    className="form-input"
-                    value={editProductForm.price}
-                    onChange={(e) => setEditProductForm({ ...editProductForm, price: e.target.value })}
-                  />
+              {/* Comprehensive Pricing & Profit Architecture */}
+              <div style={{ backgroundColor: 'var(--bg-surface-subtle)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', marginBottom: '12px' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>💰 MRP, Bechan Rate & Munafa Setup</span>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Cost Price (Kharid ₹)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    className="form-input"
-                    value={editProductForm.cost_price}
-                    onChange={(e) => setEditProductForm({ ...editProductForm, cost_price: e.target.value })}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                      MRP (Packaging Rate ₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      placeholder="e.g. 120"
+                      value={editProductForm.compare_price}
+                      onChange={(e) => setEditProductForm({ ...editProductForm, compare_price: e.target.value })}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Customer ko % discount dikhega</span>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                      Selling Price (Dukan Rate ₹) *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      className="form-input"
+                      value={editProductForm.price}
+                      onChange={(e) => setEditProductForm({ ...editProductForm, price: e.target.value })}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Standard counter bikri rate</span>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
+                      Cost Price (Kharid Mandi ₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      value={editProductForm.cost_price}
+                      onChange={(e) => setEditProductForm({ ...editProductForm, cost_price: e.target.value })}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Profit/Loss hisaab ke liye</span>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: '8px' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-danger)' }}>
+                      Min Floor Price (Nyunatam ₹)
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="form-input"
+                      placeholder="e.g. 80"
+                      value={editProductForm.floor_price}
+                      onChange={(e) => setEditProductForm({ ...editProductForm, floor_price: e.target.value })}
+                      style={{ borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Isse kam me POS bill nahi banega</span>
+                  </div>
                 </div>
+
+                {/* Price Visibility Switch */}
+                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Online Customer Ko Price Dikhayein?
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                      {editProductForm.is_price_public ? '✅ Rate & MRP online public dikhega' : '🔒 Price chupa rahega ("मूल्य पूछताछ पर / भाव-ताव")'}
+                    </div>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '6px' }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editProductForm.is_price_public)}
+                      onChange={(e) => setEditProductForm({ ...editProductForm, is_price_public: e.target.checked })}
+                      style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>
+                      {editProductForm.is_price_public ? 'Public' : 'Hidden'}
+                    </span>
+                  </label>
+                </div>
+
+                {/* Real-time Profit & Margin Indicator */}
+                {Number(editProductForm.price) > 0 && Number(editProductForm.cost_price) > 0 && (
+                  <div style={{ marginTop: '10px', backgroundColor: 'var(--bg-surface)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Expected Profit:</span>
+                    <strong style={{ color: Number(editProductForm.price) >= Number(editProductForm.cost_price) ? 'var(--color-success)' : 'var(--color-danger)' }}>
+                      +₹{(Number(editProductForm.price) - Number(editProductForm.cost_price)).toFixed(2)} ({Math.round(((Number(editProductForm.price) - Number(editProductForm.cost_price)) / Number(editProductForm.price)) * 100)}% Margin)
+                    </strong>
+                  </div>
+                )}
               </div>
 
               {/* Stock Quantity & Minimum Stock Limit */}

@@ -1,13 +1,5 @@
 /**
- * POS (Counter Billing) Cart Context
- * 
- * Hinglish Hint:
- * Dukan ke counter par grahak ke jhole/thele (Cart) ko manage karta hai:
- * - Product add/remove karna
- * - Quantity badhana/ghatana (+ / -)
- * - Discount lagana
- * - Total bill amount calculate karna
- * - Payment method select karna ('cash', 'upi', 'credit')
+ * POS (Counter Billing) Cart Context with Dynamic Custom Price & Profit Tracking
  */
 
 import React, { createContext, useContext, useState, useMemo } from 'react';
@@ -21,7 +13,7 @@ export const POSProvider = ({ children }) => {
   const [customerName, setCustomerName] = useState('');
   const [selectedKhataCustomer, setSelectedKhataCustomer] = useState(null);
   const [discountAmount, setDiscountAmount] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'upi' | 'credit'
+  const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'upi' | 'credit' | 'split'
 
   // Cart me product add karna ya quantity increment karna
   const addToCart = (product, quantity = 1, customPrice = null) => {
@@ -30,6 +22,9 @@ export const POSProvider = ({ children }) => {
       if (existingIndex > -1) {
         const updated = [...prev];
         updated[existingIndex].quantity += quantity;
+        if (customPrice !== null) {
+          updated[existingIndex].customPrice = customPrice;
+        }
         return updated;
       }
       return [...prev, { product, quantity, customPrice: customPrice ?? product.price }];
@@ -46,6 +41,22 @@ export const POSProvider = ({ children }) => {
       prev.map((item) =>
         item.product.id === productId ? { ...item, quantity: newQuantity } : item
       )
+    );
+  };
+
+  // Update sold price / dynamic bargaining price per item
+  const updateCustomPrice = (productId, newPrice) => {
+    const parsedPrice = parseFloat(newPrice);
+    setCart((prev) =>
+      prev.map((item) => {
+        if (item.product.id === productId) {
+          return {
+            ...item,
+            customPrice: isNaN(parsedPrice) ? 0 : parsedPrice,
+          };
+        }
+        return item;
+      })
     );
   };
 
@@ -67,8 +78,15 @@ export const POSProvider = ({ children }) => {
   // Bill calculations
   const subtotal = useMemo(() => {
     return cart.reduce((sum, item) => {
-      const price = item.customPrice !== null ? item.customPrice : item.product.price;
+      const price = item.customPrice !== null && item.customPrice !== undefined ? item.customPrice : item.product.price;
       return sum + price * item.quantity;
+    }, 0);
+  }, [cart]);
+
+  const totalCost = useMemo(() => {
+    return cart.reduce((sum, item) => {
+      const cost = Number(item.product.cost_price || 0);
+      return sum + cost * item.quantity;
     }, 0);
   }, [cart]);
 
@@ -77,9 +95,30 @@ export const POSProvider = ({ children }) => {
     return Math.max(0, finalAmt);
   }, [subtotal, discountAmount]);
 
+  const netProfit = useMemo(() => {
+    return total - totalCost;
+  }, [total, totalCost]);
+
+  const profitMargin = useMemo(() => {
+    if (total <= 0) return 0;
+    return Math.round((netProfit / total) * 1000) / 10;
+  }, [total, netProfit]);
+
   const itemCount = useMemo(() => {
     return cart.reduce((count, item) => count + item.quantity, 0);
   }, [cart]);
+
+  // Loss check: Check if any item is priced below floor_price (or below cost_price)
+  const lossItems = useMemo(() => {
+    return cart.filter((item) => {
+      const p = item.product;
+      const minAllowed = (p.floor_price && p.floor_price > 0) ? p.floor_price : (p.cost_price && p.cost_price > 0 ? p.cost_price : 0);
+      const soldPrice = item.customPrice !== null && item.customPrice !== undefined ? item.customPrice : p.price;
+      return minAllowed > 0 && soldPrice < minAllowed;
+    });
+  }, [cart]);
+
+  const hasLossWarning = lossItems.length > 0;
 
   return (
     <POSContext.Provider
@@ -97,11 +136,17 @@ export const POSProvider = ({ children }) => {
         setPaymentMethod,
         addToCart,
         updateQuantity,
+        updateCustomPrice,
         removeFromCart,
         clearCart,
         subtotal,
+        totalCost,
         total,
+        netProfit,
+        profitMargin,
         itemCount,
+        lossItems,
+        hasLossWarning,
       }}
     >
       {children}
