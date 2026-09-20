@@ -30,13 +30,8 @@ export const LoginScreen = () => {
     setLoading(true);
 
     try {
-      const res = await login(email, password);
-      // Agar dukaandar hai toh Merchant Dashboard, warna Home
-      if (res.user?.role === 'shop' || res.user?.role === 'admin') {
-        navigate('/merchant');
-      } else {
-        navigate('/');
-      }
+      await login(email, password);
+      navigate('/merchant');
     } catch (err) {
       setError(err.message || 'Login asafal raha, kripya check karein');
     } finally {
@@ -47,13 +42,8 @@ export const LoginScreen = () => {
   const handleGoogleSuccess = async (idToken) => {
     setError('');
     try {
-      const res = await loginWithGoogle(idToken);
-      // Agar dukaandar hai toh Merchant Dashboard, warna Home
-      if (res.user?.role === 'shop' || res.user?.role === 'admin') {
-        navigate('/merchant');
-      } else {
-        navigate('/');
-      }
+      await loginWithGoogle(idToken);
+      navigate('/merchant');
     } catch (err) {
       setError(err.message || 'Google login asafal raha, kripya dobara koshish karein.');
     }
