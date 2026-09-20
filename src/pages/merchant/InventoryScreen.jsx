@@ -3,11 +3,10 @@
  * Inspired by: Blinkit, Zepto, Shopify
  * 
  * Features:
- * - Flexible MongoDB-like Product Attributes (Company, Model, Size, Type, Color, Season, Age Group, Gender & Custom Key-Values)
- * - Visual Category Selector (Emojis ke sath Blinkit jaisa)
- * - Automatic Smart SKU Code Generator (Product name se apne aap unique code banta hai)
- * - Stock Adjust & Low-stock Alerts
- * - 1-Click Wholesale Reorder PDF Sheet
+ * - Ultra-Modern Add/Edit Product Modal with 1-Tap AI Packet Auto-Scan & Flexible Specifications
+ * - Visual Category Selector & Smart SKU Generation
+ * - Real-time Stock Adjust & Low-stock Alerts
+ * - 1-Click Wholesale Reorder PDF Sheet & CSV/Excel Bulk Import
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
@@ -31,12 +30,10 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { productApi } from '../../api/product.api';
 import { inventoryApi } from '../../api/inventory.api';
-import { uploadApi } from '../../api/upload.api';
-import { generateSmartSKU } from '../../utils/sku';
-import { getCategoryEmoji } from '../../utils/categoryMeta';
 import { AppLayout } from '../../components/layout/AppLayout';
 import { ProductDetailModal } from '../../components/common/ProductDetailModal';
 import { BulkImportModal } from '../../components/merchant/BulkImportModal';
+import { AddProductModal } from '../../components/merchant/AddProductModal';
 import { getImageUrl } from '../../utils/imageUrl';
 import { useDebounce } from '../../hooks/useDebounce';
 import { SkeletonRow } from '../../components/ui/Skeleton';
@@ -54,54 +51,16 @@ export const InventoryScreen = () => {
   // Selected product for full detail view modal
   const [inspectedProduct, setInspectedProduct] = useState(null);
 
-  // New product images
-  const [productImages, setProductImages] = useState([]);
-  const [productImagePreviews, setProductImagePreviews] = useState([]);
-
   // Stock Adjust Modal
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [adjustmentQty, setAdjustmentQty] = useState('');
   const [adjustNotes, setAdjustNotes] = useState('');
   const [adjustLoading, setAdjustLoading] = useState(false);
 
-  // New Product Modal State
+  // Product Modals
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
-  const [newProductForm, setNewProductForm] = useState({
-    name: '',
-    sku: '',
-    price: '',
-    cost_price: '',
-    stock_quantity: '20',
-    min_stock: '1',
-    category_id: '',
-    // Flexible attributes (MongoDB inside PostgreSQL)
-    attributes: {
-      company: '',
-      model: '',
-      product_type: '',
-      size: '',
-      color: '',
-      gender: '',
-      season: '',
-      age_group: '',
-    },
-  });
-
-  // Custom key-value pairs for endless flexibility
-  const [customAttributes, setCustomAttributes] = useState([]);
-
-  const [addProductLoading, setAddProductLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  // Edit Product Modal State
   const [editingProduct, setEditingProduct] = useState(null);
-  const [editProductForm, setEditProductForm] = useState(null);
-  const [editExistingImages, setEditExistingImages] = useState([]);
-  const [editNewImages, setEditNewImages] = useState([]);
-  const [editNewImagePreviews, setEditNewImagePreviews] = useState([]);
-  const [editProductLoading, setEditProductLoading] = useState(false);
-  const [editError, setEditError] = useState('');
 
   // Universal Safe Stock Helper
   const getProductStock = (p) => {
@@ -114,165 +73,6 @@ export const InventoryScreen = () => {
       p.stock ??
       0
     );
-  };
-
-  // Handle new product images selection (Add Product Modal)
-  const handleProductImageSelect = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    const validFiles = [];
-    const validPreviews = [];
-
-    for (const f of files) {
-      if (productImages.length + validFiles.length >= 4) {
-        alert('Ek product ke liye maximum 4 photos hi jod sakte hain');
-        break;
-      }
-      if (f.size > 2 * 1024 * 1024) {
-        alert(`"${f.name}" ka size 2MB se zyada hai. Kripya 2MB se choti photo chunein.`);
-        continue;
-      }
-      const mime = (f.type || '').toLowerCase();
-      if (mime && !['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(mime)) {
-        alert(`"${f.name}" ka format valid nahi hai. Sirf JPG, PNG, ya WebP allowed hain.`);
-        continue;
-      }
-      validFiles.push(f);
-      validPreviews.push(URL.createObjectURL(f));
-    }
-
-    setProductImages((prev) => [...prev, ...validFiles]);
-    setProductImagePreviews((prev) => [...prev, ...validPreviews]);
-    e.target.value = '';
-  };
-
-  // Remove photo from Add Product modal
-  const handleRemoveProductImage = (idx) => {
-    setProductImages((prev) => prev.filter((_, i) => i !== idx));
-    setProductImagePreviews((prev) => {
-      const removed = prev[idx];
-      if (removed && removed.startsWith('blob:')) {
-        URL.revokeObjectURL(removed);
-      }
-      return prev.filter((_, i) => i !== idx);
-    });
-  };
-
-  const handleOpenEditProduct = (p) => {
-    setEditingProduct(p);
-    setEditExistingImages(Array.isArray(p.images) ? [...p.images] : []);
-    setEditNewImages([]);
-    setEditNewImagePreviews([]);
-    setEditError('');
-    setEditProductForm({
-      name: p.name || '',
-      sku: p.sku || '',
-      price: String(p.price || ''),
-      cost_price: String(p.cost_price || ''),
-      stock_quantity: String(getProductStock(p)),
-      min_stock: String(p.min_stock ?? p.low_stock_threshold ?? p.inventory?.low_stock_threshold ?? 1),
-      category_id: p.category_id || p.category?.id || (categories[0]?.id || ''),
-      description: p.description || '',
-      attributes: { ...(p.attributes || {}) },
-    });
-  };
-
-  const handleEditNewImagesSelect = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    const currentTotal = editExistingImages.length + editNewImages.length;
-    const remaining = 4 - currentTotal;
-    if (remaining <= 0) {
-      alert('Max 4 photos allowed per product');
-      return;
-    }
-
-    const validFiles = [];
-    const validPreviews = [];
-
-    for (const f of files.slice(0, remaining)) {
-      if (f.size > 2 * 1024 * 1024) {
-        alert(`"${f.name}" ka size 2MB se zyada hai.`);
-        continue;
-      }
-      const mime = (f.type || '').toLowerCase();
-      if (mime && !['image/jpeg', 'image/png', 'image/webp', 'image/jpg'].includes(mime)) {
-        alert(`"${f.name}" ka format valid nahi hai.`);
-        continue;
-      }
-      validFiles.push(f);
-      validPreviews.push(URL.createObjectURL(f));
-    }
-
-    setEditNewImages((prev) => [...prev, ...validFiles]);
-    setEditNewImagePreviews((prev) => [...prev, ...validPreviews]);
-    e.target.value = '';
-  };
-
-  const handleRemoveEditExistingImage = (idx) => {
-    setEditExistingImages((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const handleRemoveEditNewImage = (idx) => {
-    setEditNewImages((prev) => prev.filter((_, i) => i !== idx));
-    setEditNewImagePreviews((prev) => {
-      const removed = prev[idx];
-      if (removed && removed.startsWith('blob:')) {
-        URL.revokeObjectURL(removed);
-      }
-      return prev.filter((_, i) => i !== idx);
-    });
-  };
-
-  const handleSaveEditProduct = async (e) => {
-    e.preventDefault();
-    if (!editingProduct || !editProductForm) return;
-
-    try {
-      setEditProductLoading(true);
-      setEditError('');
-
-      let uploadedNewUrls = [];
-      if (editNewImages.length > 0) {
-        try {
-          const uploadRes = await uploadApi.uploadProductImages(editNewImages);
-          uploadedNewUrls = uploadRes.images || [];
-        } catch (uploadErr) {
-          console.error('Edit image upload error:', uploadErr);
-          if (!window.confirm('Nayi photo upload nahi ho saki: ' + (uploadErr.message || 'Error') + '. Kya aap baaki badlaav save karna chahte hain?')) {
-            setEditProductLoading(false);
-            return;
-          }
-        }
-      }
-
-      const finalImages = [...editExistingImages, ...uploadedNewUrls].slice(0, 4);
-
-      const updatePayload = {
-        name: editProductForm.name.trim(),
-        sku: editProductForm.sku.trim(),
-        price: Number(editProductForm.price),
-        cost_price: Number(editProductForm.cost_price) || 0,
-        floor_price: editProductForm.floor_price ? Number(editProductForm.floor_price) : 0,
-        allow_bargain: Boolean(editProductForm.allow_bargain),
-        stock_quantity: Number(editProductForm.stock_quantity) || 0,
-        min_stock: Math.max(1, Number(editProductForm.min_stock) || 1),
-        category_id: editProductForm.category_id,
-        description: editProductForm.description?.trim(),
-        attributes: editProductForm.attributes,
-        images: finalImages,
-      };
-
-      await productApi.updateProduct(editingProduct.id, updatePayload);
-      setEditingProduct(null);
-      setEditProductForm(null);
-      await loadData();
-    } catch (err) {
-      setEditError(err.message || 'Product update nahi ho saka');
-    } finally {
-      setEditProductLoading(false);
-    }
   };
 
   const handleDeleteProduct = async (id) => {
@@ -298,90 +98,67 @@ export const InventoryScreen = () => {
         productApi.getCategories(),
       ]);
 
+      let productList = [];
       if (prodRes.status === 'fulfilled') {
-        const prodList = prodRes.value?.products || prodRes.value || [];
-        setProducts(prodList);
-        const customLowStock = prodList.filter((p) => {
-          const stock = getProductStock(p);
-          const minStock = Number(p.min_stock ?? p.low_stock_threshold ?? p.inventory?.low_stock_threshold ?? 1);
-          return stock <= minStock;
-        });
-        setLowStockItems(customLowStock);
+        const d = prodRes.value;
+        productList = Array.isArray(d) ? d : d?.products || d?.data || [];
       }
+      setProducts(productList);
+
+      // Extract low stock directly using safe threshold
+      const lowStockList = productList.filter((p) => {
+        const stock = getProductStock(p);
+        const threshold = Number(p.min_stock ?? p.low_stock_threshold ?? p.inventory?.low_stock_threshold ?? 1);
+        return stock <= threshold;
+      });
+      setLowStockItems(lowStockList);
+
+      let catList = [];
       if (catRes.status === 'fulfilled') {
-        const catList = catRes.value || [];
-        setCategories(catList);
-        if (catList.length > 0 && !newProductForm.category_id) {
-          setNewProductForm((prev) => ({ ...prev, category_id: catList[0].id }));
-        }
+        const d = catRes.value;
+        catList = Array.isArray(d) ? d : d?.categories || d?.data || [];
       }
+      setCategories(catList);
     } catch (err) {
       console.error('Inventory load error:', err);
     } finally {
       setLoading(false);
     }
-  }, [shop?.slug, newProductForm.category_id]);
+  }, [shop?.slug]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Product naam type karte hi automatic smart SKU banayein
-  const handleProductNameChange = (e) => {
-    const name = e.target.value;
-    setNewProductForm((prev) => ({
-      ...prev,
-      name,
-      sku: generateSmartSKU(name),
-    }));
-  };
+  // Debounced search term for smooth typing
+  const debouncedSearchTerm = useDebounce(searchTerm, 250);
 
-  // Re-generate SKU
-  const handleRegenerateSKU = () => {
-    setNewProductForm((prev) => ({
-      ...prev,
-      sku: generateSmartSKU(prev.name),
-    }));
-  };
-
-  // Attribute change handler
-  const handleAttributeChange = (key, val) => {
-    setNewProductForm((prev) => ({
-      ...prev,
-      attributes: {
-        ...prev.attributes,
-        [key]: val,
-      },
-    }));
-  };
-
-  // Custom key-value pair functions
-  const addCustomAttribute = () => {
-    setCustomAttributes((prev) => [...prev, { key: '', value: '' }]);
-  };
-
-  const updateCustomAttribute = (index, field, val) => {
-    setCustomAttributes((prev) => {
-      const updated = [...prev];
-      updated[index][field] = val;
-      return updated;
+  // Filter products by search
+  const filteredProducts = useMemo(() => {
+    const list = Array.isArray(products) ? products : [];
+    if (!debouncedSearchTerm) return list;
+    const term = debouncedSearchTerm.toLowerCase().trim();
+    return list.filter((p) => {
+      const nameMatch = p.name?.toLowerCase().includes(term);
+      const skuMatch = p.sku?.toLowerCase().includes(term);
+      const brandMatch = p.attributes?.brand?.toLowerCase().includes(term) || p.attributes?.company?.toLowerCase().includes(term);
+      const sizeMatch = p.attributes?.size_unit?.toLowerCase().includes(term) || p.attributes?.size?.toLowerCase().includes(term);
+      const tagMatch = Array.isArray(p.tags) && p.tags.some((t) => t.toLowerCase().includes(term));
+      return nameMatch || skuMatch || brandMatch || sizeMatch || tagMatch;
     });
-  };
+  }, [products, debouncedSearchTerm]);
 
-  const removeCustomAttribute = (index) => {
-    setCustomAttributes((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Stock Adjust karna
-  const handleStockAdjust = async (e) => {
+  // Stock Adjustment Submission
+  const handleStockAdjustment = async (e) => {
     e.preventDefault();
-    if (!selectedProduct) return;
+    if (!selectedProduct || !adjustmentQty) return;
+
     try {
       setAdjustLoading(true);
       await inventoryApi.adjustStock({
         product_id: selectedProduct.id,
         adjustment: Number(adjustmentQty),
-        notes: adjustNotes || 'Manual counter stock adjustment',
+        notes: adjustNotes || 'Manual stock update',
       });
       setSelectedProduct(null);
       setAdjustmentQty('');
@@ -396,16 +173,16 @@ export const InventoryScreen = () => {
 
   const [bulkRestocking, setBulkRestocking] = useState(false);
 
-  // Bulk Restock Helper: adds +qty units to all low-stock or out-of-stock products
+  // Bulk Restock Helper
   const handleBulkRestock = async (qty = 10) => {
     const targets = (Array.isArray(products) ? products : []).filter(
       (p) => getProductStock(p) <= 5
     );
     if (targets.length === 0) {
-      alert('All products are above minimum stock levels. Your inventory looks healthy!');
+      alert('Sabhi products ka stock theek hai. Minimum stock limit se upar hain.');
       return;
     }
-    if (!window.confirm(`Bulk Restock: ${targets.length} low-stock/out-of-stock products me +${qty} units add karein?`)) {
+    if (!window.confirm(`Bulk Restock: ${targets.length} low-stock products me +${qty} units jodein?`)) {
       return;
     }
 
@@ -421,9 +198,9 @@ export const InventoryScreen = () => {
         )
       );
       await loadData();
-      alert(`Success! ${targets.length} products restocked with +${qty} units.`);
+      alert(`Badhai! ${targets.length} products me +${qty} stock units jod diye gaye hain.`);
     } catch (err) {
-      alert('Bulk restock encountered an error: ' + err.message);
+      alert('Bulk restock me samasya: ' + err.message);
     } finally {
       setBulkRestocking(false);
     }
@@ -434,137 +211,42 @@ export const InventoryScreen = () => {
     0
   );
 
-
-  // Naya Product Create karna
-  const handleAddProduct = async (e) => {
-    e.preventDefault();
-    if (!newProductForm.category_id) {
-      setError('Kripya ek category chuniye');
-      return;
-    }
-
-    try {
-      setAddProductLoading(true);
-      setError('');
-
-      // Build final attributes map (clean empty keys)
-      const finalAttributes = {};
-      Object.entries(newProductForm.attributes).forEach(([k, v]) => {
-        if (v && v.trim()) {
-          finalAttributes[k] = v.trim();
-        }
-      });
-      customAttributes.forEach((item) => {
-        if (item.key && item.key.trim() && item.value && item.value.trim()) {
-          finalAttributes[item.key.trim().toLowerCase()] = item.value.trim();
-        }
-      });
-
-      // Upload product images if selected
-      let uploadedImageUrls = [];
-      if (productImages.length > 0) {
-        try {
-          const uploadRes = await uploadApi.uploadProductImages(productImages);
-          uploadedImageUrls = uploadRes.images || [];
-        } catch (uploadErr) {
-          console.error('Product image upload error:', uploadErr);
-          if (!window.confirm('Photo upload me samasya aayi: ' + (uploadErr.message || 'Error') + '. Kya aap bina photo ke product save karna chahte hain?')) {
-            setAddProductLoading(false);
-            return;
-          }
-        }
-      }
-
-      await productApi.createProduct({
-        ...newProductForm,
-        sku: newProductForm.sku || generateSmartSKU(newProductForm.name),
-        price: Number(newProductForm.price),
-        cost_price: Number(newProductForm.cost_price) || 0,
-        floor_price: newProductForm.floor_price ? Number(newProductForm.floor_price) : 0,
-        allow_bargain: Boolean(newProductForm.allow_bargain),
-        stock_quantity: Number(newProductForm.stock_quantity) || 0,
-        min_stock: Math.max(1, Number(newProductForm.min_stock) || 1),
-        category_id: newProductForm.category_id,
-        attributes: finalAttributes,
-        images: uploadedImageUrls,
-      });
-
-      setShowAddProductModal(false);
-      setProductImages([]);
-      setProductImagePreviews([]);
-      setNewProductForm({
-        name: '',
-        sku: '',
-        price: '',
-        cost_price: '',
-        stock_quantity: '20',
-        min_stock: '1',
-        category_id: categories[0]?.id || '',
-        attributes: {
-          company: '',
-          model: '',
-          product_type: '',
-          size: '',
-          color: '',
-          gender: '',
-          season: '',
-          age_group: '',
-        },
-      });
-      setCustomAttributes([]);
-      await loadData();
-    } catch (err) {
-      setError(err.message || 'Product add nahi ho saka');
-    } finally {
-      setAddProductLoading(false);
-    }
-  };
-
-  const debouncedSearch = useDebounce(searchTerm, 250);
-
-  const filteredProducts = useMemo(() => {
-    if (!debouncedSearch.trim()) return products;
-    const s = debouncedSearch.toLowerCase();
-    return products.filter((p) => {
-      const matchesBasic =
-        p.name?.toLowerCase().includes(s) ||
-        p.sku?.toLowerCase().includes(s);
-
-      // Search inside flexible JSONB attributes too (Brand, Model, Color, Size, Type)
-      const matchesAttr =
-        p.attributes &&
-        Object.values(p.attributes).some(
-          (val) => typeof val === 'string' && val.toLowerCase().includes(s)
-        );
-
-      return matchesBasic || matchesAttr;
-    });
-  }, [products, debouncedSearch]);
-
   return (
-    <AppLayout title="Stock & Catalog" subtitle="Smart Inventory Control">
-      {/* Tab Switcher */}
-      <div className="tab-pills">
+    <AppLayout title="Inventory & Stock">
+      <div className="tab-nav mb-3">
         <button
-          className={`tab-pill ${activeTab === 'catalog' ? 'active' : ''}`}
+          className={`tab-item ${activeTab === 'catalog' ? 'active' : ''}`}
           onClick={() => setActiveTab('catalog')}
         >
-          <Boxes size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
-          Sare Products ({products.length})
+          <Boxes size={18} />
+          <span>Full Catalog ({products.length})</span>
         </button>
         <button
-          className={`tab-pill ${activeTab === 'low_stock' ? 'active' : ''}`}
+          className={`tab-item ${activeTab === 'low_stock' ? 'active' : ''}`}
           onClick={() => setActiveTab('low_stock')}
-          style={{ color: lowStockItems.length > 0 ? 'var(--color-danger)' : undefined }}
+          style={{ position: 'relative' }}
         >
-          <AlertTriangle size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }} />
-          Low Stock ({lowStockItems.length})
+          <AlertTriangle size={18} color={lowStockItems.length > 0 ? '#f59e0b' : 'inherit'} />
+          <span>Kam Stock ({lowStockItems.length})</span>
+          {lowStockItems.length > 0 && (
+            <span
+              style={{
+                position: 'absolute',
+                top: '6px',
+                right: '8px',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: '#ef4444',
+              }}
+            />
+          )}
         </button>
       </div>
 
       {activeTab === 'catalog' ? (
-        <>
-          {/* Inventory Health & Stock Value Bar */}
+        <div>
+          {/* Inventory Valuation Header */}
           <div
             style={{
               display: 'flex',
@@ -631,18 +313,13 @@ export const InventoryScreen = () => {
                 fontWeight: 700,
                 padding: '8px 12px',
               }}
-              title="500+ items direct CSV ya Excel se import karein"
+              title="CSV ya Excel se bulk import karein"
             >
               <FileSpreadsheet size={16} /> <span>CSV Import</span>
             </button>
 
             <button
-              onClick={() => {
-                setShowAddProductModal(true);
-                if (categories.length > 0 && !newProductForm.category_id) {
-                  setNewProductForm((p) => ({ ...p, category_id: categories[0].id }));
-                }
-              }}
+              onClick={() => setShowAddProductModal(true)}
               className="btn btn-primary btn-sm"
               style={{ flexShrink: 0, gap: '4px', padding: '8px 14px' }}
             >
@@ -650,7 +327,7 @@ export const InventoryScreen = () => {
             </button>
           </div>
 
-          {/* Product Items */}
+          {/* Product Items List */}
           <div className="card" style={{ padding: '8px 12px' }}>
             {loading ? (
               <div style={{ padding: '12px 0' }}>
@@ -675,13 +352,13 @@ export const InventoryScreen = () => {
                   onClick={() => setInspectedProduct(p)}
                   style={{ padding: '12px 0', alignItems: 'center', display: 'flex', gap: '12px', cursor: 'pointer' }}
                 >
-                  {/* Product Thumbnail Photo */}
+                  {/* Product Thumbnail */}
                   <div
                     style={{
                       width: '48px',
                       height: '48px',
                       borderRadius: 'var(--radius-md)',
-                      backgroundColor: '#f8fafc',
+                      backgroundColor: 'var(--bg-surface-subtle, #f8fafc)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -709,32 +386,22 @@ export const InventoryScreen = () => {
                       SKU: <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{p.sku || 'N/A'}</span> • Price: <strong>₹{p.price}</strong>
                     </div>
 
-                    {/* Flexible Attributes Badges (Company, Size, Color, Gender, Type) */}
+                    {/* Attributes Badges */}
                     {p.attributes && Object.keys(p.attributes).length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
-                        {p.attributes.company && (
+                        {(p.attributes.brand || p.attributes.company) && (
                           <span className="badge badge-info" style={{ fontSize: '0.7rem' }}>
-                            🏷️ {p.attributes.company}
+                            🏷️ {p.attributes.brand || p.attributes.company}
                           </span>
                         )}
-                        {p.attributes.product_type && (
-                          <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>
-                            {p.attributes.product_type}
-                          </span>
-                        )}
-                        {p.attributes.size && (
+                        {(p.attributes.size_unit || p.attributes.size) && (
                           <span className="badge badge-muted" style={{ fontSize: '0.7rem' }}>
-                            Size: {p.attributes.size}
+                            Size: {p.attributes.size_unit || p.attributes.size}
                           </span>
                         )}
                         {p.attributes.color && (
                           <span className="badge badge-muted" style={{ fontSize: '0.7rem' }}>
                             🎨 {p.attributes.color}
-                          </span>
-                        )}
-                        {p.attributes.gender && (
-                          <span className="badge badge-muted" style={{ fontSize: '0.7rem' }}>
-                            👤 {p.attributes.gender}
                           </span>
                         )}
                       </div>
@@ -748,147 +415,40 @@ export const InventoryScreen = () => {
                       const isLow = stockVal <= minVal;
                       return (
                         <div style={{ textAlign: 'right' }}>
-                          <div
-                            style={{
-                              fontWeight: 800,
-                              fontSize: '0.95rem',
-                              color: isLow ? 'var(--color-danger)' : 'var(--color-success)',
-                            }}
+                          <span
+                            className={`badge ${stockVal <= 0 ? 'badge-danger' : isLow ? 'badge-warning' : 'badge-success'}`}
+                            style={{ fontSize: '0.75rem', fontWeight: 700 }}
                           >
-                            {stockVal} pcs
-                          </div>
-                          <div style={{ fontSize: '0.68rem', fontWeight: 600, color: isLow ? 'var(--color-danger)' : 'var(--text-muted)' }}>
-                            {isLow ? `⚠️ Low (Min: ${minVal})` : `Min: ${minVal}`}
-                          </div>
+                            {stockVal <= 0 ? 'Out of Stock' : `${stockVal} in stock`}
+                          </span>
                         </div>
                       );
                     })()}
-                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+
+                    <div style={{ display: 'flex', gap: '6px' }}>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleOpenEditProduct(p);
+                          setEditingProduct(p);
                         }}
                         className="btn btn-secondary btn-sm"
-                        style={{ padding: '5px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '3px' }}
-                        title="Edit Details & Photos"
+                        style={{ padding: '4px 8px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        title="Edit Details"
                       >
-                        <Edit3 size={12} /> Edit
+                        <Edit3 size={13} /> Edit
                       </button>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedProduct(p);
+                          setAdjustmentQty('');
+                          setAdjustNotes('');
                         }}
-                        className="btn btn-secondary btn-sm"
-                        style={{ padding: '5px 8px', fontSize: '0.75rem' }}
+                        className="btn btn-primary btn-sm"
+                        style={{ padding: '4px 8px', fontSize: '0.75rem' }}
                       >
-                        Stock
+                        Adjust
                       </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </>
-      ) : (
-        /* Low Stock Tab */
-        <div>
-          <div
-            className="card"
-            style={{
-              backgroundColor: 'var(--color-warning-light)',
-              border: '1px solid #fde68a',
-              padding: '16px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <AlertTriangle size={26} color="var(--color-warning)" style={{ flexShrink: 0 }} />
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#92400e' }}>
-                  Wholesale Reorder PDF Sheet
-                </div>
-                <div style={{ fontSize: '0.8rem', color: '#b45309', margin: '4px 0 12px 0' }}>
-                  Aapke dukan ke {lowStockItems.length} saman khatam hone wale hain. 
-                  Is PDF sheet ko download karke seedhe wholesale supplier ko bhej sakte hain.
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <a
-                    href={inventoryApi.getReorderSheetUrl()}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-sm"
-                    style={{
-                      backgroundColor: '#92400e',
-                      color: '#ffffff',
-                      fontWeight: 700,
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                  >
-                    <FileDown size={16} /> Reorder Sheet PDF
-                  </a>
-
-                  <button
-                    onClick={() => handleBulkRestock(10)}
-                    disabled={bulkRestocking}
-                    style={{
-                      backgroundColor: '#10b981',
-                      color: '#ffffff',
-                      border: 'none',
-                      padding: '6px 12px',
-                      borderRadius: 'var(--radius-md)',
-                      fontWeight: 700,
-                      fontSize: '0.78rem',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                  >
-                    <RefreshCw size={14} className={bulkRestocking ? 'spin' : ''} />
-                    {bulkRestocking ? 'Restocking...' : '1-Click Restock (+10)'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '8px 12px' }}>
-            <div style={{ padding: '8px 4px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
-              KHATAM HONE WALE PRODUCTS ({lowStockItems.length})
-            </div>
-
-            {lowStockItems.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '24px', color: 'var(--color-success)', fontSize: '0.85rem' }}>
-                <CheckCircle size={32} style={{ margin: '0 auto 6px auto', display: 'block' }} />
-                All products have healthy stock levels. No low-stock alerts.
-              </div>
-            ) : (
-              lowStockItems.map((item) => (
-                <div
-                  key={item.product_id}
-                  className="list-item"
-                  style={{ padding: '10px 0' }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                      {item.name}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      SKU: {item.sku} • Price: ₹{item.price}
-                    </div>
-                  </div>
-
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--color-danger)' }}>
-                      {item.current_stock} bacha hai
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: '#b45309', fontWeight: 600 }}>
-                      Suggested: +{item.suggested_reorder_qty} pcs
                     </div>
                   </div>
                 </div>
@@ -896,41 +456,167 @@ export const InventoryScreen = () => {
             )}
           </div>
         </div>
+      ) : (
+        /* Low Stock Items Tab */
+        <div>
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+              border: '1px solid #fcd34d',
+              padding: '12px 14px',
+              borderRadius: '12px',
+              marginBottom: '12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 800, color: '#92400e', fontSize: '0.9rem' }}>
+                ⚠️ Low Stock Alert ({lowStockItems.length} Products)
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '2px' }}>
+                Ye items dukan me jaldi khatam ho sakte hain.
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleBulkRestock(10)}
+              disabled={bulkRestocking || lowStockItems.length === 0}
+              style={{
+                background: '#d97706',
+                color: '#fff',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Sabhi me +10 dalein
+            </button>
+          </div>
+
+          <div className="card" style={{ padding: '8px 12px' }}>
+            {lowStockItems.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                <CheckCircle size={40} color="#10b981" style={{ margin: '0 auto 8px auto' }} />
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Stock Ekdam Sahi Hai!</div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Koi bhi product minimum alert level se niche nahi hai.
+                </p>
+              </div>
+            ) : (
+              lowStockItems.map((p) => {
+                const stockVal = getProductStock(p);
+                return (
+                  <div
+                    key={p.id}
+                    className="list-item"
+                    style={{ padding: '12px 0', alignItems: 'center', display: 'flex', gap: '12px' }}
+                  >
+                    <div
+                      style={{
+                        width: '44px',
+                        height: '44px',
+                        borderRadius: 'var(--radius-md)',
+                        backgroundColor: '#fef2f2',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <AlertTriangle size={20} color="#ef4444" />
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{p.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        SKU: {p.sku || 'N/A'} • Selling: ₹{p.price}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="badge badge-danger" style={{ fontSize: '0.75rem', fontWeight: 800 }}>
+                        {stockVal} bache hain
+                      </span>
+                      <button
+                        onClick={() => {
+                          setSelectedProduct(p);
+                          setAdjustmentQty('');
+                          setAdjustNotes('');
+                        }}
+                        className="btn btn-primary btn-sm"
+                        style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                      >
+                        Restock
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       )}
 
-      {/* Stock Adjust Modal */}
+      {/* Stock Adjustment Bottom Sheet */}
       {selectedProduct && (
         <div className="modal-backdrop" onClick={() => setSelectedProduct(null)}>
           <div className="bottom-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, marginBottom: '4px' }}>
-              Stock Adjust: {selectedProduct.name}
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '4px' }}>
+              Stock Update: {selectedProduct.name}
             </h3>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-              Current Stock: <strong>{getProductStock(selectedProduct)} pcs</strong>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+              Abhi dukan me stock: <strong>{getProductStock(selectedProduct)}</strong> units hain.
             </p>
 
-            <form onSubmit={handleStockAdjust}>
+            <form onSubmit={handleStockAdjustment}>
               <div className="form-group">
-                <label className="form-label">
-                  Kitna Stock Badhana ya Ghatana Hai? (+50 ya -5)
-                </label>
-                <input
-                  type="number"
-                  required
-                  className="form-input"
-                  placeholder="e.g. +20 naya maal aaya ya -2 damage hua"
-                  value={adjustmentQty}
-                  onChange={(e) => setAdjustmentQty(e.target.value)}
-                />
+                <label className="form-label">Stock me badlaav (+ jodne ke liye, - ghatane ke liye)</label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    required
+                    className="form-input"
+                    placeholder="e.g. +10 ya -2"
+                    value={adjustmentQty}
+                    onChange={(e) => setAdjustmentQty(e.target.value)}
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setAdjustmentQty('10')}
+                  >
+                    +10
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setAdjustmentQty('25')}
+                  >
+                    +25
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setAdjustmentQty('50')}
+                  >
+                    +50
+                  </button>
+                </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Vajah / Notes</label>
+                <label className="form-label">Wajah / Reason (Optional)</label>
                 <input
                   type="text"
                   className="form-input"
-                  placeholder="e.g. Supplier se stock aaya"
+                  placeholder="e.g. Supplier se stock aaya ya Kharab saman"
                   value={adjustNotes}
                   onChange={(e) => setAdjustNotes(e.target.value)}
                 />
@@ -953,546 +639,15 @@ export const InventoryScreen = () => {
         </div>
       )}
 
-      {/* Add Product Modal with Flexible Attributes (MongoDB in PostgreSQL) */}
-      {showAddProductModal && (
-        <div className="modal-backdrop" onClick={() => setShowAddProductModal(false)}>
-          <div className="bottom-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-handle" />
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '4px' }}>
-              Naya Product Add Karein
-            </h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-              Product details & flexible specifications bharein.
-            </p>
-
-            {error && (
-              <div style={{ color: 'var(--color-danger)', fontSize: '0.82rem', marginBottom: '10px' }}>
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleAddProduct}>
-              {/* Product Name */}
-              <div className="form-group">
-                <label className="form-label">Product Ka Naam</label>
-                <input
-                  type="text"
-                  required
-                  className="form-input"
-                  placeholder="e.g. Peter England Slim Fit Shirt (Blue) ya Fortune Oil 1L"
-                  value={newProductForm.name}
-                  onChange={handleProductNameChange}
-                />
-              </div>
-
-              {/* Smart Auto-Generated SKU Code */}
-              <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                  <label className="form-label" style={{ margin: 0 }}>
-                    SKU / Barcode (Automatic Generated)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={handleRegenerateSKU}
-                    style={{
-                      border: 'none',
-                      background: 'transparent',
-                      color: 'var(--color-primary)',
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    <RefreshCw size={12} /> Naya Code
-                  </button>
-                </div>
-                <div className="sku-generator-box">
-                  <span className="sku-code-text">
-                    {newProductForm.sku || 'Naam likhte hi banega'}
-                  </span>
-                  <input
-                    type="text"
-                    required
-                    style={{
-                      border: 'none',
-                      background: 'transparent',
-                      fontSize: '0.85rem',
-                      width: '80px',
-                      color: 'var(--text-secondary)',
-                      outline: 'none',
-                      textAlign: 'right',
-                    }}
-                    value={newProductForm.sku}
-                    onChange={(e) => setNewProductForm({ ...newProductForm, sku: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              {/* Product Photos Upload (Max 4) */}
-              <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label className="form-label" style={{ margin: 0 }}>
-                    Product Ki Photos (Max 4)
-                  </label>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    {productImages.length}/4 selected
-                  </span>
-                </div>
-
-                {productImagePreviews.length > 0 && (
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                    {productImagePreviews.map((url, idx) => (
-                      <div key={idx} style={{ position: 'relative' }}>
-                        <img
-                          src={url}
-                          alt={`Product Preview ${idx + 1}`}
-                          style={{
-                            width: '60px',
-                            height: '60px',
-                            borderRadius: 'var(--radius-sm)',
-                            objectFit: 'cover',
-                            border: '1px solid var(--border-subtle)',
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveProductImage(idx)}
-                          style={{
-                            position: 'absolute',
-                            top: '-5px',
-                            right: '-5px',
-                            backgroundColor: 'var(--color-danger)',
-                            color: '#ffffff',
-                            borderRadius: '50%',
-                            width: '18px',
-                            height: '18px',
-                            border: 'none',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                          title="Hataayein"
-                        >
-                          <X size={11} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {productImages.length < 4 && (
-                  <div>
-                    <label
-                      htmlFor="modal-product-images-input"
-                      className="btn btn-secondary btn-sm"
-                      style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <Upload size={14} /> Photos Chunein (Gallery/Camera)
-                    </label>
-                    <input
-                      id="modal-product-images-input"
-                      type="file"
-                      multiple
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleProductImageSelect}
-                      style={{ display: 'none' }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Visual Category Selector (Blinkit Style Pill Grid) */}
-              <div className="form-group">
-                <label className="form-label">Category Chuniye</label>
-                <div className="category-pill-grid">
-                  {categories.map((cat) => {
-                    const isSelected = newProductForm.category_id === cat.id;
-                    const emoji = getCategoryEmoji(cat.slug || cat.name);
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        className={`category-pill-btn ${isSelected ? 'active' : ''}`}
-                        onClick={() => setNewProductForm({ ...newProductForm, category_id: cat.id })}
-                      >
-                        <span style={{ fontSize: '1.2rem' }}>{emoji}</span>
-                        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {cat.name}
-                        </span>
-                        {isSelected && <Check size={14} color="var(--color-primary)" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Comprehensive Pricing & Profit Architecture */}
-              <div style={{ backgroundColor: 'var(--bg-surface-subtle)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', marginBottom: '12px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>💰 MRP, Bechan Rate & Munafa Setup</span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
-                      MRP (Packaging Rate ₹)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-input"
-                      placeholder="e.g. 120"
-                      value={newProductForm.compare_price}
-                      onChange={(e) => setNewProductForm({ ...newProductForm, compare_price: e.target.value })}
-                    />
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Customer ko % discount dikhega</span>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
-                      Selling Price (Dukan Rate ₹) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      className="form-input"
-                      placeholder="e.g. 100"
-                      value={newProductForm.price}
-                      onChange={(e) => setNewProductForm({ ...newProductForm, price: e.target.value })}
-                    />
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Standard counter bikri rate</span>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
-                      Cost Price (Kharid Mandi ₹)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-input"
-                      placeholder="e.g. 75"
-                      value={newProductForm.cost_price}
-                      onChange={(e) => setNewProductForm({ ...newProductForm, cost_price: e.target.value })}
-                    />
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Profit/Loss hisaab ke liye</span>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-danger)' }}>
-                      Min Floor Price (Nyunatam ₹)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-input"
-                      placeholder="e.g. 80"
-                      value={newProductForm.floor_price}
-                      onChange={(e) => setNewProductForm({ ...newProductForm, floor_price: e.target.value })}
-                      style={{ borderColor: 'rgba(239, 68, 68, 0.4)' }}
-                    />
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Isse kam me POS bill nahi banega</span>
-                  </div>
-                </div>
-
-                {/* Price Visibility Switch */}
-                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                      Online Customer Ko Price Dikhayein?
-                    </div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                      {newProductForm.is_price_public ? '✅ Rate & MRP online public dikhega' : '🔒 Price chupa rahega ("मूल्य पूछताछ पर / भाव-ताव")'}
-                    </div>
-                  </div>
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '6px' }}>
-                    <input
-                      type="checkbox"
-                      checked={Boolean(newProductForm.is_price_public)}
-                      onChange={(e) => setNewProductForm({ ...newProductForm, is_price_public: e.target.checked })}
-                      style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
-                    />
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>
-                      {newProductForm.is_price_public ? 'Public' : 'Hidden'}
-                    </span>
-                  </label>
-                </div>
-
-                {/* Real-time Profit & Margin Indicator */}
-                {Number(newProductForm.price) > 0 && Number(newProductForm.cost_price) > 0 && (
-                  <div style={{ marginTop: '10px', backgroundColor: 'var(--bg-surface)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Expected Profit:</span>
-                    <strong style={{ color: Number(newProductForm.price) >= Number(newProductForm.cost_price) ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                      +₹{(Number(newProductForm.price) - Number(newProductForm.cost_price)).toFixed(2)} ({Math.round(((Number(newProductForm.price) - Number(newProductForm.cost_price)) / Number(newProductForm.price)) * 100)}% Margin)
-                    </strong>
-                  </div>
-                )}
-              </div>
-
-              {/* Stock Quantity & Minimum Stock Threshold */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label className="form-label">Shuruaati Stock (Qty)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    className="form-input"
-                    placeholder="20"
-                    value={newProductForm.stock_quantity}
-                    onChange={(e) => setNewProductForm({ ...newProductForm, stock_quantity: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span>Minimum Stock</span>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--color-primary)', fontWeight: 800 }}>*Aap Decide Karein</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="form-input"
-                    placeholder="1"
-                    value={newProductForm.min_stock}
-                    onChange={(e) => setNewProductForm({ ...newProductForm, min_stock: e.target.value })}
-                  />
-                  <div className="form-hint" style={{ fontSize: '0.68rem' }}>Default 1 (Kam stock warning ke liye)</div>
-                </div>
-              </div>
-
-              {/* 🚀 FLEXIBLE PRODUCT ATTRIBUTES SECTION (MongoDB inside PostgreSQL) */}
-              <div
-                style={{
-                  backgroundColor: 'var(--bg-surface-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '12px',
-                  marginBottom: '16px',
-                  border: '1.5px solid var(--border-subtle)',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '10px',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Sliders size={16} color="var(--color-primary)" />
-                    <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>
-                      Product Specifications & Features
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--color-primary)', fontWeight: 700 }}>
-                    Flexible JSONB
-                  </span>
-                </div>
-
-                {/* Company / Brand & Model */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Company / Brand</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      style={{ padding: '8px 10px', fontSize: '0.85rem' }}
-                      placeholder="e.g. Peter England / Samsung / Tata"
-                      value={newProductForm.attributes.company}
-                      onChange={(e) => handleAttributeChange('company', e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Model / Variety</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      style={{ padding: '8px 10px', fontSize: '0.85rem' }}
-                      placeholder="e.g. Slim Fit / M34 / Banarasi"
-                      value={newProductForm.attributes.model}
-                      onChange={(e) => handleAttributeChange('model', e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Type & Size */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Type (Shirt, Saree, Oil)</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      style={{ padding: '8px 10px', fontSize: '0.85rem' }}
-                      placeholder="e.g. Shirt, Saree, Jeans, Kurti"
-                      value={newProductForm.attributes.product_type}
-                      onChange={(e) => handleAttributeChange('product_type', e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Size (S, M, L, XL, 1L, etc.)</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      style={{ padding: '8px 10px', fontSize: '0.85rem' }}
-                      placeholder="e.g. XL, 38, Free Size, 1L"
-                      value={newProductForm.attributes.size}
-                      onChange={(e) => handleAttributeChange('size', e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Color & Gender */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Color (Rang)</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      style={{ padding: '8px 10px', fontSize: '0.85rem' }}
-                      placeholder="e.g. Navy Blue, Maroon, Black"
-                      value={newProductForm.attributes.color}
-                      onChange={(e) => handleAttributeChange('color', e.target.value)}
-                    />
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Gender</label>
-                    <select
-                      className="form-select"
-                      style={{ padding: '8px 10px', fontSize: '0.85rem' }}
-                      value={newProductForm.attributes.gender}
-                      onChange={(e) => handleAttributeChange('gender', e.target.value)}
-                    >
-                      <option value="">-- Choose Gender --</option>
-                      <option value="Men">Men (Purush)</option>
-                      <option value="Women">Women (Mahila)</option>
-                      <option value="Boys">Boys (Ladke)</option>
-                      <option value="Girls">Girls (Ladkiyan)</option>
-                      <option value="Kids">Kids (Bacche)</option>
-                      <option value="Unisex">Unisex (Sabhi)</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Season & Age Group */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Season (Mausam)</label>
-                    <select
-                      className="form-select"
-                      style={{ padding: '8px 10px', fontSize: '0.85rem' }}
-                      value={newProductForm.attributes.season}
-                      onChange={(e) => handleAttributeChange('season', e.target.value)}
-                    >
-                      <option value="">-- Choose Season --</option>
-                      <option value="Summer">Summer (Garmi)</option>
-                      <option value="Winter">Winter (Sardi)</option>
-                      <option value="Monsoon">Monsoon (Barish)</option>
-                      <option value="All Season">All Season (Hamesha)</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Age Group</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      style={{ padding: '8px 10px', fontSize: '0.85rem' }}
-                      placeholder="e.g. Adults / 5-10 yrs / Teens"
-                      value={newProductForm.attributes.age_group}
-                      onChange={(e) => handleAttributeChange('age_group', e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {/* Custom Key-Value Dynamic Attributes List */}
-                {customAttributes.map((attr, idx) => (
-                  <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
-                    <input
-                      type="text"
-                      className="form-input"
-                      style={{ flex: 1, padding: '7px 9px', fontSize: '0.8rem' }}
-                      placeholder="Field Name (e.g. Fabric)"
-                      value={attr.key}
-                      onChange={(e) => updateCustomAttribute(idx, 'key', e.target.value)}
-                    />
-                    <input
-                      type="text"
-                      className="form-input"
-                      style={{ flex: 1, padding: '7px 9px', fontSize: '0.8rem' }}
-                      placeholder="Value (e.g. Pure Silk)"
-                      value={attr.value}
-                      onChange={(e) => updateCustomAttribute(idx, 'value', e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeCustomAttribute(idx)}
-                      style={{
-                        border: 'none',
-                        background: 'transparent',
-                        color: 'var(--color-danger)',
-                        cursor: 'pointer',
-                        padding: '4px',
-                      }}
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
-
-                <button
-                  type="button"
-                  onClick={addCustomAttribute}
-                  style={{
-                    border: '1px dashed var(--color-primary)',
-                    background: 'transparent',
-                    color: 'var(--color-primary)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '6px 10px',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    width: '100%',
-                    marginTop: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <Plus size={14} /> + Aur Custom Field Jodein (Warranty, Material, Pattern)
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={addProductLoading}>
-                  {addProductLoading ? 'Product ban raha hai...' : 'Product Catalog Me Jodein'}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowAddProductModal(false)}
-                >
-                  Radd
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Product Detail Inspection Modal */}
+      {/* Inspect Product Detail View Modal */}
       {inspectedProduct && (
         <ProductDetailModal
           product={inspectedProduct}
           onClose={() => setInspectedProduct(null)}
-          onEditProduct={(p) => handleOpenEditProduct(p)}
+          onEditProduct={(p) => {
+            setInspectedProduct(null);
+            setEditingProduct(p);
+          }}
           onAdjustStock={(p) => {
             setSelectedProduct(p);
             setAdjustmentQty('');
@@ -1502,337 +657,24 @@ export const InventoryScreen = () => {
         />
       )}
 
-      {/* Edit Product Modal with Full Photos & Details Editing */}
-      {editingProduct && editProductForm && (
-        <div className="modal-backdrop" onClick={() => setEditingProduct(null)}>
-          <div className="bottom-sheet" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '90vh', overflowY: 'auto' }}>
-            <div className="sheet-handle" />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-              <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0 }}>
-                  Product Edit Karein
-                </h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '2px 0 0 0' }}>
-                  SKU: {editingProduct.sku}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleDeleteProduct(editingProduct.id)}
-                style={{
-                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                  color: 'var(--color-danger)',
-                  border: 'none',
-                  padding: '6px 10px',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '0.78rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <Trash2 size={14} /> Delete
-              </button>
-            </div>
+      {/* Ultra-Modern Add Product Modal */}
+      <AddProductModal
+        isOpen={showAddProductModal}
+        onClose={() => setShowAddProductModal(false)}
+        onSuccess={loadData}
+        categories={categories}
+        initialProduct={null}
+      />
 
-            {editError && (
-              <div style={{ color: 'var(--color-danger)', backgroundColor: '#fee2e2', padding: '8px 12px', borderRadius: 'var(--radius-sm)', fontSize: '0.82rem', marginBottom: '12px' }}>
-                {editError}
-              </div>
-            )}
+      {/* Ultra-Modern Edit Product Modal */}
+      <AddProductModal
+        isOpen={Boolean(editingProduct)}
+        onClose={() => setEditingProduct(null)}
+        onSuccess={loadData}
+        categories={categories}
+        initialProduct={editingProduct}
+      />
 
-            <form onSubmit={handleSaveEditProduct}>
-              {/* Product Name */}
-              <div className="form-group">
-                <label className="form-label">Product Ka Naam</label>
-                <input
-                  type="text"
-                  required
-                  className="form-input"
-                  value={editProductForm.name}
-                  onChange={(e) => setEditProductForm({ ...editProductForm, name: e.target.value })}
-                />
-              </div>
-
-              {/* Product Photos Section */}
-              <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label className="form-label" style={{ margin: 0 }}>
-                    Product Photos ({editExistingImages.length + editNewImages.length}/4)
-                  </label>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    Max 4 photos
-                  </span>
-                </div>
-
-                {/* Previews Grid */}
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
-                  {/* Existing Saved Photos */}
-                  {editExistingImages.map((url, idx) => (
-                    <div key={`existing-${idx}`} style={{ position: 'relative' }}>
-                      <img
-                        src={getImageUrl(url)}
-                        alt={`Photo ${idx + 1}`}
-                        style={{
-                          width: '64px',
-                          height: '64px',
-                          borderRadius: 'var(--radius-sm)',
-                          objectFit: 'cover',
-                          border: '1px solid var(--border-subtle)',
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveEditExistingImage(idx)}
-                        style={{
-                          position: 'absolute',
-                          top: '-5px',
-                          right: '-5px',
-                          backgroundColor: 'var(--color-danger)',
-                          color: '#ffffff',
-                          borderRadius: '50%',
-                          width: '18px',
-                          height: '18px',
-                          border: 'none',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        title="Hataayein"
-                      >
-                        <X size={11} />
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* Newly Added Photos */}
-                  {editNewImagePreviews.map((url, idx) => (
-                    <div key={`new-${idx}`} style={{ position: 'relative' }}>
-                      <img
-                        src={url}
-                        alt={`New ${idx + 1}`}
-                        style={{
-                          width: '64px',
-                          height: '64px',
-                          borderRadius: 'var(--radius-sm)',
-                          objectFit: 'cover',
-                          border: '2px solid var(--color-primary)',
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveEditNewImage(idx)}
-                        style={{
-                          position: 'absolute',
-                          top: '-5px',
-                          right: '-5px',
-                          backgroundColor: 'var(--color-danger)',
-                          color: '#ffffff',
-                          borderRadius: '50%',
-                          width: '18px',
-                          height: '18px',
-                          border: 'none',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                        title="Hataayein"
-                      >
-                        <X size={11} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Upload Button */}
-                {editExistingImages.length + editNewImages.length < 4 && (
-                  <div>
-                    <label
-                      htmlFor="edit-product-images-input"
-                      className="btn btn-secondary btn-sm"
-                      style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <Upload size={14} /> Nayi Photo Jodein (Camera / Gallery)
-                    </label>
-                    <input
-                      id="edit-product-images-input"
-                      type="file"
-                      multiple
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleEditNewImagesSelect}
-                      style={{ display: 'none' }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Comprehensive Pricing & Profit Architecture */}
-              <div style={{ backgroundColor: 'var(--bg-surface-subtle)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', marginBottom: '12px' }}>
-                <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span>💰 MRP, Bechan Rate & Munafa Setup</span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
-                      MRP (Packaging Rate ₹)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-input"
-                      placeholder="e.g. 120"
-                      value={editProductForm.compare_price}
-                      onChange={(e) => setEditProductForm({ ...editProductForm, compare_price: e.target.value })}
-                    />
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Customer ko % discount dikhega</span>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
-                      Selling Price (Dukan Rate ₹) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      required
-                      className="form-input"
-                      value={editProductForm.price}
-                      onChange={(e) => setEditProductForm({ ...editProductForm, price: e.target.value })}
-                    />
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Standard counter bikri rate</span>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>
-                      Cost Price (Kharid Mandi ₹)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-input"
-                      value={editProductForm.cost_price}
-                      onChange={(e) => setEditProductForm({ ...editProductForm, cost_price: e.target.value })}
-                    />
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Profit/Loss hisaab ke liye</span>
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: '8px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-danger)' }}>
-                      Min Floor Price (Nyunatam ₹)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className="form-input"
-                      placeholder="e.g. 80"
-                      value={editProductForm.floor_price}
-                      onChange={(e) => setEditProductForm({ ...editProductForm, floor_price: e.target.value })}
-                      style={{ borderColor: 'rgba(239, 68, 68, 0.4)' }}
-                    />
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Isse kam me POS bill nahi banega</span>
-                  </div>
-                </div>
-
-                {/* Price Visibility Switch */}
-                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                      Online Customer Ko Price Dikhayein?
-                    </div>
-                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                      {editProductForm.is_price_public ? '✅ Rate & MRP online public dikhega' : '🔒 Price chupa rahega ("मूल्य पूछताछ पर / भाव-ताव")'}
-                    </div>
-                  </div>
-                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '6px' }}>
-                    <input
-                      type="checkbox"
-                      checked={Boolean(editProductForm.is_price_public)}
-                      onChange={(e) => setEditProductForm({ ...editProductForm, is_price_public: e.target.checked })}
-                      style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)', cursor: 'pointer' }}
-                    />
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700 }}>
-                      {editProductForm.is_price_public ? 'Public' : 'Hidden'}
-                    </span>
-                  </label>
-                </div>
-
-                {/* Real-time Profit & Margin Indicator */}
-                {Number(editProductForm.price) > 0 && Number(editProductForm.cost_price) > 0 && (
-                  <div style={{ marginTop: '10px', backgroundColor: 'var(--bg-surface)', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Expected Profit:</span>
-                    <strong style={{ color: Number(editProductForm.price) >= Number(editProductForm.cost_price) ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                      +₹{(Number(editProductForm.price) - Number(editProductForm.cost_price)).toFixed(2)} ({Math.round(((Number(editProductForm.price) - Number(editProductForm.cost_price)) / Number(editProductForm.price)) * 100)}% Margin)
-                    </strong>
-                  </div>
-                )}
-              </div>
-
-              {/* Stock Quantity & Minimum Stock Limit */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="form-group">
-                  <label className="form-label">Total Stock (Units)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    className="form-input"
-                    value={editProductForm.stock_quantity}
-                    onChange={(e) => setEditProductForm({ ...editProductForm, stock_quantity: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span>Minimum Stock</span>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--color-primary)', fontWeight: 800 }}>*Aap Decide Karein</span>
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    className="form-input"
-                    value={editProductForm.min_stock}
-                    onChange={(e) => setEditProductForm({ ...editProductForm, min_stock: e.target.value })}
-                  />
-                  <div className="form-hint" style={{ fontSize: '0.68rem' }}>Default 1 (Kam stock warning ke liye)</div>
-                </div>
-              </div>
-
-              {/* Category */}
-              <div className="form-group">
-                <label className="form-label">Category</label>
-                <select
-                  className="form-select"
-                  value={editProductForm.category_id}
-                  onChange={(e) => setEditProductForm({ ...editProductForm, category_id: e.target.value })}
-                >
-                  {categories.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={editProductLoading}>
-                  {editProductLoading ? 'Saving changes...' : 'Save Changes'}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setEditingProduct(null)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       {/* Bulk CSV / Excel Import Modal */}
       <BulkImportModal
         isOpen={showBulkImportModal}
