@@ -109,7 +109,7 @@ export function SmartSearchWidget({ onSelectProduct, onClose }) {
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center overflow-hidden font-bold text-purple-600">
                   {prod.images?.[0] || prod.image_url ? (
-                    <img src={prod.images?.[0] || prod.image_url} alt="" className="w-full h-full object-cover" />
+                    <img loading="lazy" decoding="async"  src={prod.images?.[0] || prod.image_url} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <span>📦</span>
                   )}

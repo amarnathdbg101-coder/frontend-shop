@@ -1231,7 +1231,7 @@ export const AddProductModal = ({
                     border: '1.5px solid var(--border-subtle, #e2e8f0)',
                   }}
                 >
-                  <img
+                  <img loading="lazy" decoding="async" 
                     src={getImageUrl(url)}
                     alt={`Product ${idx}`}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -1273,7 +1273,7 @@ export const AddProductModal = ({
                     border: '1.5px solid var(--color-primary, #4f46e5)',
                   }}
                 >
-                  <img
+                  <img loading="lazy" decoding="async" 
                     src={url}
                     alt={`Preview ${idx}`}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}

@@ -189,7 +189,7 @@ export const ProfileScreen = () => {
               }}
             >
               {user?.avatar_url ? (
-                <img
+                <img loading="lazy" decoding="async" 
                   src={getImageUrl(user.avatar_url)}
                   alt={user?.name || user?.full_name}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -307,9 +307,9 @@ export const ProfileScreen = () => {
                   }}
                 >
                   {shopLogoPreview ? (
-                    <img src={shopLogoPreview} alt="New Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img loading="lazy" decoding="async"  src={shopLogoPreview} alt="New Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : shop.logo_url ? (
-                    <img
+                    <img loading="lazy" decoding="async" 
                       src={getImageUrl(shop.logo_url)}
                       alt={shop.name}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -352,7 +352,7 @@ export const ProfileScreen = () => {
               <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
                 {shopBannerPreviews.length > 0 ? (
                   shopBannerPreviews.map((bp, idx) => (
-                    <img
+                    <img loading="lazy" decoding="async" 
                       key={idx}
                       src={bp}
                       alt="Banner Preview"
@@ -361,7 +361,7 @@ export const ProfileScreen = () => {
                   ))
                 ) : shop.banners && shop.banners.length > 0 ? (
                   shop.banners.map((b, idx) => (
-                    <img
+                    <img loading="lazy" decoding="async" 
                       key={idx}
                       src={getImageUrl(b)}
                       alt={`Shop Banner ${idx + 1}`}
@@ -430,7 +430,7 @@ export const ProfileScreen = () => {
                 }}
               >
                 {shop.logo_url ? (
-                  <img
+                  <img loading="lazy" decoding="async" 
                     src={getImageUrl(shop.logo_url)}
                     alt={shop.name}
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}

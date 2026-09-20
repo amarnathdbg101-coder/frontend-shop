@@ -133,7 +133,7 @@ Scan or tap the link to order directly!`;
               <div class="store-sub">${shop.address || 'Local Market'} • Live Catalog & Counter Pickups</div>
 
               <div class="qr-box">
-                <img class="qr-img" src="${qrDataUrl}" alt="Shop QR" />
+                <img loading="lazy" decoding="async"  class="qr-img" src="${qrDataUrl}" alt="Shop QR" />
               </div>
 
               <div class="instructions">📱 SCAN WITH ANY CAMERA OR QR APP</div>

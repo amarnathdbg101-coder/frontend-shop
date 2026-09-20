@@ -185,7 +185,7 @@ export const RealQRCode = ({
               <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>Generating QR...</span>
             </div>
           ) : (
-            <img
+            <img loading="lazy" decoding="async" 
               src={dataUrl}
               alt="Official Scannable QR Code"
               style={{

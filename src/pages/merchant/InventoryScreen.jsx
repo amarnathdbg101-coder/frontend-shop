@@ -47,6 +47,8 @@ export const InventoryScreen = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 25;
 
   // Selected product for full detail view modal
   const [inspectedProduct, setInspectedProduct] = useState(null);
@@ -147,6 +149,16 @@ export const InventoryScreen = () => {
       return nameMatch || skuMatch || brandMatch || sizeMatch || tagMatch;
     });
   }, [products, debouncedSearchTerm]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredProducts.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredProducts, currentPage]);
 
   // Stock Adjustment Submission
   const handleStockAdjustment = async (e) => {
@@ -345,7 +357,7 @@ export const InventoryScreen = () => {
                 </p>
               </div>
             ) : (
-              filteredProducts.map((p) => (
+              paginatedProducts.map((p) => (
                 <div
                   key={p.id}
                   className="list-item card-clickable"
@@ -368,7 +380,7 @@ export const InventoryScreen = () => {
                     }}
                   >
                     {p.images && p.images.length > 0 ? (
-                      <img
+                      <img loading="lazy" decoding="async" 
                         src={getImageUrl(p.images[0])}
                         alt={p.name}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -453,6 +465,49 @@ export const InventoryScreen = () => {
                   </div>
                 </div>
               ))
+            )}
+
+            {/* Pagination Controls */}
+            {filteredProducts.length > ITEMS_PER_PAGE && (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginTop: '14px',
+                  paddingTop: '12px',
+                  borderTop: '1px solid var(--border-subtle)',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Kul {filteredProducts.length} me se {(currentPage - 1) * ITEMS_PER_PAGE + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredProducts.length)} products
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '6px 12px', fontSize: '0.78rem', fontWeight: 700 }}
+                  >
+                    ← Peechhe
+                  </button>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    Page {currentPage} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '6px 12px', fontSize: '0.78rem', fontWeight: 700 }}
+                  >
+                    Aage →
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

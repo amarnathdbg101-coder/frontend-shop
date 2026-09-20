@@ -1351,7 +1351,7 @@ export const KhataScreen = () => {
           onClick={() => setViewParchiUrl(null)}
         >
           <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
-            <img src={viewParchiUrl} alt="Parchi receipt" style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '12px' }} />
+            <img loading="lazy" decoding="async"  src={viewParchiUrl} alt="Parchi receipt" style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: '12px' }} />
             <button
               onClick={() => setViewParchiUrl(null)}
               style={{

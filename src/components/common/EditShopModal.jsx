@@ -730,9 +730,9 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
                     }}
                   >
                     {logoPreview ? (
-                      <img src={logoPreview} alt="Logo Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img loading="lazy" decoding="async"  src={logoPreview} alt="Logo Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : shop.logo_url ? (
-                      <img src={getImageUrl(shop.logo_url)} alt={shop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img loading="lazy" decoding="async"  src={getImageUrl(shop.logo_url)} alt={shop.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       <Store size={28} color="var(--text-muted)" />
                     )}
@@ -768,7 +768,7 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
                   {bannerPreviews.length > 0 ? (
                     bannerPreviews.map((p, i) => (
-                      <img
+                      <img loading="lazy" decoding="async" 
                         key={i}
                         src={p}
                         alt="New Banner"
@@ -777,7 +777,7 @@ export const EditShopModal = ({ isOpen, onClose, onUpdated }) => {
                     ))
                   ) : shop.banners && shop.banners.length > 0 ? (
                     shop.banners.map((b, i) => (
-                      <img
+                      <img loading="lazy" decoding="async" 
                         key={i}
                         src={getImageUrl(b)}
                         alt="Current Banner"

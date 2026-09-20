@@ -482,7 +482,7 @@ export const POSScreen = () => {
                       }}
                     >
                       {prod.image_url ? (
-                        <img
+                        <img loading="lazy" decoding="async" 
                           src={getImageUrl(prod.image_url)}
                           alt={prod.name}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
