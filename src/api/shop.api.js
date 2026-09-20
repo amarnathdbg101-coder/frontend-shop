@@ -16,60 +16,62 @@ export const shopApi = {
   // Merchant: Apni shop ki details lana
   getMyShop: async () => {
     const res = await client.get('/shops/me');
-    return res.data;
+    return res.data?.shop || res.data || res;
   },
 
   // Merchant: Nayi shop register karna
   // Alias for createShop
   create: async (shopData) => {
     const res = await client.post('/shops', shopData);
-    return res.data;
+    return res.data?.shop || res.data || res;
   },
 
   createShop: async (shopData) => {
     const res = await client.post('/shops', shopData);
-    return res.data;
+    return res.data?.shop || res.data || res;
   },
 
   // Merchant: Shop details update karna (name, address, etc.)
   updateMyShop: async (updateData) => {
     const res = await client.put('/shops/me', updateData);
-    return res.data;
+    return res.data?.shop || res.data || res;
   },
 
   // Merchant: Dukan ko live (Open) ya close (Offline) karna
   // Alias for toggleShopStatus
-  updateStatus: async () => {
-    const res = await client.patch('/shops/me/status');
-    return res.data;
+  updateStatus: async (isOpen) => {
+    const payload = typeof isOpen === 'boolean' ? { is_open: isOpen } : undefined;
+    const res = await client.patch('/shops/me/status', payload);
+    return res.data?.shop || res.data || res;
   },
 
-  toggleShopStatus: async () => {
-    const res = await client.patch('/shops/me/status');
-    return res.data;
+  toggleShopStatus: async (isOpen) => {
+    const payload = typeof isOpen === 'boolean' ? { is_open: isOpen } : undefined;
+    const res = await client.patch('/shops/me/status', payload);
+    return res.data?.shop || res.data || res;
   },
 
   // Merchant: Apni dukan ka payment / storefront QR Code lena
   // Alias for getMyShopQR
   getQRCode: async () => {
     const res = await client.get('/shops/me/qr');
-    return res.data;
+    return res.data || res;
   },
 
   getMyShopQR: async () => {
     const res = await client.get('/shops/me/qr');
-    return res.data;
+    return res.data || res;
   },
 
   // Public: Marketplace ke sare active shops dekhna
   listPublicShops: async (params = {}) => {
     const res = await client.get('/shops', { params });
-    return res.data;
+    return res.data || res;
   },
 
   // Public: Slug se kisi bhi dukan ka storefront dekhna (e.g. /shops/slug/gupta-general-store)
   getShopBySlug: async (slug) => {
     const res = await client.get(`/shops/slug/${slug}`);
-    return res.data;
+    return res.data || res;
   },
 };

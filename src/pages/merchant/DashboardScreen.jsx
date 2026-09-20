@@ -64,7 +64,7 @@ import { getImageUrl } from '../../utils/imageUrl';
 
 export const DashboardScreen = () => {
   const navigate = useNavigate();
-  const { shop, refreshShop, user, logout } = useAuth();
+  const { shop, refreshShop, updateShopState, user, logout } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [showEditShopModal, setShowEditShopModal] = useState(false);
@@ -89,14 +89,14 @@ export const DashboardScreen = () => {
   });
 
   // Local optimistic store status state
-  const [localIsOpen, setLocalIsOpen] = useState(shop?.is_active ?? true);
+  const [localIsOpen, setLocalIsOpen] = useState(Boolean(shop?.is_currently_open ?? shop?.is_open ?? true));
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
 
   useEffect(() => {
     if (shop) {
-      setLocalIsOpen(shop.is_active ?? true);
+      setLocalIsOpen(Boolean(shop.is_currently_open ?? shop.is_open ?? true));
     }
-  }, [shop]);
+  }, [shop?.is_currently_open, shop?.is_open, shop?.is_active]);
 
   // Shop Setup Form State (for unregistered shop owners)
   const [newShop, setNewShop] = useState({
@@ -226,7 +226,10 @@ export const DashboardScreen = () => {
     setLocalIsOpen(nextStatus);
     setIsTogglingStatus(true);
     try {
-      await shopApi.toggleShopStatus();
+      const updated = await shopApi.toggleShopStatus(nextStatus);
+      if (updated && typeof updated === 'object') {
+        updateShopState(updated);
+      }
       await refreshShop();
       playSoundboxAnnouncement(
         nextStatus

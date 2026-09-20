@@ -141,7 +141,12 @@ export const ProfileScreen = () => {
   // Toggle shop status
   const handleToggleShopStatus = async () => {
     try {
-      await shopApi.toggleShopStatus();
+      const currentStatus = Boolean(shop?.is_currently_open ?? shop?.is_open ?? true);
+      const nextStatus = !currentStatus;
+      const updated = await shopApi.toggleShopStatus(nextStatus);
+      if (updated && typeof updated === 'object') {
+        updateShopState(updated);
+      }
       await refreshShop();
     } catch (err) {
       alert('Status change error: ' + err.message);
@@ -451,9 +456,9 @@ export const ProfileScreen = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '5px',
-                backgroundColor: shop.is_active ? 'var(--color-success-light)' : 'var(--color-danger-light)',
-                border: `1px solid ${shop.is_active ? '#10b981' : '#ef4444'}`,
-                color: shop.is_active ? '#065f46' : '#991b1b',
+                backgroundColor: (shop.is_currently_open ?? shop.is_open ?? true) ? 'var(--color-success-light)' : 'var(--color-danger-light)',
+                border: `1px solid ${(shop.is_currently_open ?? shop.is_open ?? true) ? '#10b981' : '#ef4444'}`,
+                color: (shop.is_currently_open ?? shop.is_open ?? true) ? '#065f46' : '#991b1b',
                 padding: '5px 12px',
                 borderRadius: 'var(--radius-full)',
                 fontSize: '0.75rem',
@@ -462,7 +467,7 @@ export const ProfileScreen = () => {
               }}
             >
               <Power size={13} />
-              <span>{shop.is_active ? 'Online (Khuli)' : 'Offline (Band)'}</span>
+              <span>{(shop.is_currently_open ?? shop.is_open ?? true) ? 'Online (Khuli)' : 'Offline (Band)'}</span>
             </button>
           </div>
 
