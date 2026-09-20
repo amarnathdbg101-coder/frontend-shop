@@ -805,11 +805,13 @@ export const POSScreen = () => {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Total Amount:</span>
-                  <span style={{ fontWeight: 800 }}>₹{billSuccess.bill?.final_amount}</span>
+                  <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-primary)' }}>
+                    ₹{(billSuccess.bill?.total_amount ?? billSuccess.bill?.final_amount ?? total).toFixed(2)}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Payment Mode:</span>
-                  <span style={{ fontWeight: 700, textTransform: 'uppercase' }}>{billSuccess.bill?.payment_method}</span>
+                  <span style={{ fontWeight: 700, textTransform: 'uppercase' }}>{billSuccess.bill?.payment_method || 'CASH'}</span>
                 </div>
                 {billSuccess.loyalty_points_credited > 0 && (
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -846,8 +848,13 @@ export const POSScreen = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      const text = `🛒 *Tax Invoice - ${shop?.name || 'Store'}*\n📄 Bill No: ${billSuccess.bill?.bill_number}\n💰 Amount: ₹${billSuccess.bill?.final_amount}\n💳 Payment: ${(billSuccess.bill?.payment_method || 'cash').toUpperCase()}\n🔗 Digital PDF: ${posApi.getReceiptUrl(billSuccess.bill?.bill_number)}`;
-                      window.open(`https://wa.me/${(billSuccess.bill?.customer_phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(text)}`, '_blank');
+                      const billAmt = billSuccess.bill?.total_amount ?? billSuccess.bill?.final_amount ?? total;
+                      const text = `🛒 *Tax Invoice - ${shop?.name || 'Store'}*\n📄 Bill No: ${billSuccess.bill?.bill_number}\n💰 Amount: ₹${Number(billAmt).toFixed(2)}\n💳 Payment: ${(billSuccess.bill?.payment_method || 'cash').toUpperCase()}\n🔗 Digital PDF: ${posApi.getReceiptUrl(billSuccess.bill?.bill_number)}`;
+                      const cleanPhone = (billSuccess.bill?.customer_phone || customerPhone || '').replace(/[^0-9]/g, '');
+                      const whatsappUrl = cleanPhone.length >= 10
+                        ? `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(text)}`
+                        : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+                      window.open(whatsappUrl, '_blank');
                     }}
                     className="btn"
                     style={{ background: '#25D366', color: '#ffffff', border: 'none', fontWeight: 800, fontSize: '0.82rem' }}
@@ -858,7 +865,13 @@ export const POSScreen = () => {
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={() => setBillSuccess(null)}
+                    onClick={() => {
+                      setBillSuccess(null);
+                      clearCart();
+                      setCustomerPhone('');
+                      setCustomerName('');
+                      setDiscountAmount(0);
+                    }}
                     style={{ fontWeight: 700 }}
                   >
                     New Bill (+)

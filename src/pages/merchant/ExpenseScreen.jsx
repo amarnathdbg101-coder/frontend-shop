@@ -143,7 +143,7 @@ export const ExpenseScreen = () => {
       {/* Category Breakdown Chips */}
       {expenseData.category_total && Object.keys(expenseData.category_total).length > 0 && (
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '12px' }}>
-          {Object.entries(expenseData.category_total).map(([cat, total]) => {
+          {Object.entries(expenseData.category_total || {}).map(([cat, total]) => {
             const meta = getCategoryMeta(cat);
             return (
               <div
