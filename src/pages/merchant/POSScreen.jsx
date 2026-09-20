@@ -147,27 +147,85 @@ export const POSScreen = () => {
       setBillingLoading(true);
       setErrorMessage('');
 
+      const currentCartItems = [...cart];
+      const currentTotal = total;
+      const currentSubtotal = subtotal;
+      const currentCustPhone = customerPhone.trim();
+      const currentCustName = customerName.trim();
+
       const payload = {
-        customer_phone: customerPhone.trim() || undefined,
-        customer_name: customerName.trim() || undefined,
+        customer_phone: currentCustPhone || undefined,
+        customer_name: currentCustName || undefined,
         discount_amount: Number(discountAmount) || 0,
         payment_method: paymentMethod,
-        items: cart.map((item) => ({
+        items: currentCartItems.map((item) => ({
           product_id: item.product.id,
           quantity: item.quantity,
           custom_price: item.customPrice,
         })),
       };
 
-      const result = await posApi.createSale(payload);
-      setBillSuccess(result);
+      const rawResult = await posApi.createSale(payload);
 
-      // Play Soundbox Tone & Hindi Speech Announcement
-      const billTotal = result.bill?.final_amount || result.total_amount || total;
-      playSoundboxTone(paymentMethod === 'credit' ? 'credit' : 'payment', billTotal);
+      // Safe normalization of bill object
+      const billObj = rawResult?.bill || rawResult?.data?.bill || rawResult?.data || rawResult;
+      const finalBill = {
+        ...billObj,
+        bill_number: billObj?.bill_number || `BILL-${Date.now().toString().slice(-6)}`,
+        total_amount: Number(billObj?.total_amount ?? billObj?.final_amount ?? currentTotal),
+        final_amount: Number(billObj?.total_amount ?? billObj?.final_amount ?? currentTotal),
+        subtotal: Number(billObj?.subtotal ?? currentSubtotal),
+        discount_amount: Number(billObj?.discount_amount ?? discountAmount ?? 0),
+        payment_method: billObj?.payment_method || paymentMethod,
+        customer_name: billObj?.customer_name || currentCustName || 'Walk-in Customer',
+        customer_phone: billObj?.customer_phone || currentCustPhone || '',
+        items: Array.isArray(billObj?.items) && billObj.items.length > 0
+          ? billObj.items
+          : currentCartItems.map((it) => ({
+              product_id: it.product.id,
+              product_name: it.product.name,
+              product_sku: it.product.sku,
+              quantity: it.quantity,
+              unit_price: it.customPrice ?? it.product.price,
+              total_price: (it.customPrice ?? it.product.price) * it.quantity,
+            })),
+      };
 
+      const finalResult = {
+        ...rawResult,
+        bill: finalBill,
+        receipt_url: rawResult?.receipt_url || `/receipts/${finalBill.bill_number}`,
+        loyalty_points_credited: rawResult?.loyalty_points_credited || 0,
+      };
+
+      setBillSuccess(finalResult);
+
+      // Play Soundbox Audio Feedback safely
+      try {
+        const billTotal = finalBill.total_amount;
+        if (paymentMethod === 'credit') {
+          speakKhataTransaction({
+            type: 'CREDIT',
+            amount: billTotal,
+            customerName: currentCustName || 'ग्राहक',
+            shopName: shop?.name || 'दुकान',
+          });
+        } else {
+          speakSoundboxPayment({
+            amount: billTotal,
+            paymentMode: paymentMethod,
+            customerName: currentCustName || '',
+            shopName: shop?.name || 'दुकान',
+          });
+        }
+      } catch (soundErr) {
+        console.warn('Soundbox audio warning:', soundErr);
+      }
+
+      // Clear current cart so terminal is ready for next sale
       clearCart();
     } catch (err) {
+      console.error('POS Checkout Error:', err);
       setErrorMessage(err.message || 'Sale record karne me error aaya');
     } finally {
       setBillingLoading(false);
@@ -785,51 +843,116 @@ export const POSScreen = () => {
       {/* Bill Success Receipt Bottom Sheet */}
       {billSuccess && (
         <div className="modal-backdrop" onClick={() => setBillSuccess(null)}>
-          <div className="bottom-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-handle" />
-            <div style={{ textAlign: 'center', padding: '10px' }}>
-              <CheckCircle size={52} color="var(--color-success)" style={{ margin: '0 auto 8px auto' }} />
-              <h2 style={{ fontSize: '1.3rem', fontWeight: 800 }}>Bill Ban Gaya!</h2>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Bill Number: <strong>{billSuccess.bill?.bill_number}</strong>
-              </p>
-
+          <div
+            className="bottom-sheet"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '520px', margin: '0 auto', borderRadius: '24px 24px 0 0', padding: '20px' }}
+          >
+            <div className="sheet-handle" style={{ marginBottom: '12px' }} />
+            <div style={{ textAlign: 'center' }}>
               <div
                 style={{
-                  backgroundColor: 'var(--bg-surface-subtle)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '12px',
+                  width: '60px',
+                  height: '60px',
+                  borderRadius: '50%',
+                  backgroundColor: '#dcfce7',
+                  color: '#16a34a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 10px auto',
+                }}
+              >
+                <CheckCircle size={36} />
+              </div>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0f172a', margin: 0 }}>
+                Bill Safalta-poorvak Ban Gaya!
+              </h2>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: '#f1f5f9',
+                  padding: '4px 12px',
+                  borderRadius: '12px',
+                  marginTop: '8px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  color: '#475569',
+                }}
+              >
+                <span>Bill No:</span>
+                <strong style={{ color: '#0f172a' }}>{billSuccess.bill?.bill_number}</strong>
+              </div>
+
+              {/* Bill Details Summary Card */}
+              <div
+                style={{
+                  backgroundColor: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '16px',
+                  padding: '14px 16px',
                   margin: '16px 0',
                   textAlign: 'left',
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Total Amount:</span>
-                  <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-primary)' }}>
-                    ₹{(billSuccess.bill?.total_amount ?? billSuccess.bill?.final_amount ?? total).toFixed(2)}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Kul Bill Rashi (Grand Total):</span>
+                  <span style={{ fontWeight: 900, fontSize: '1.25rem', color: '#16a34a' }}>
+                    ₹{Number(billSuccess.bill?.total_amount || 0).toFixed(2)}
                   </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Payment Mode:</span>
-                  <span style={{ fontWeight: 700, textTransform: 'uppercase' }}>{billSuccess.bill?.payment_method || 'CASH'}</span>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '6px' }}>
+                  <span style={{ color: '#64748b' }}>Payment Mode:</span>
+                  <span
+                    style={{
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      padding: '2px 8px',
+                      borderRadius: '6px',
+                      backgroundColor: billSuccess.bill?.payment_method === 'credit' ? '#fee2e2' : '#e0e7ff',
+                      color: billSuccess.bill?.payment_method === 'credit' ? '#b91c1c' : '#4338ca',
+                      fontSize: '0.75rem',
+                    }}
+                  >
+                    {billSuccess.bill?.payment_method === 'credit' ? '🔴 KHATA UDHAR' : (billSuccess.bill?.payment_method || 'CASH').toUpperCase()}
+                  </span>
                 </div>
-                {billSuccess.loyalty_points_credited > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-primary)' }}>Loyalty Points:</span>
-                    <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>
-                      +{billSuccess.loyalty_points_credited} pts
+
+                {billSuccess.bill?.customer_name && billSuccess.bill?.customer_name !== 'Walk-in Customer' && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '6px' }}>
+                    <span style={{ color: '#64748b' }}>Customer:</span>
+                    <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                      {billSuccess.bill.customer_name} {billSuccess.bill.customer_phone ? `(${billSuccess.bill.customer_phone})` : ''}
                     </span>
+                  </div>
+                )}
+
+                {Array.isArray(billSuccess.bill?.items) && billSuccess.bill.items.length > 0 && (
+                  <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '8px', marginTop: '8px', fontSize: '0.78rem', color: '#64748b' }}>
+                    <div style={{ fontWeight: 700, marginBottom: '4px', color: '#334155' }}>Items ({billSuccess.bill.items.length}):</div>
+                    <div style={{ maxHeight: '70px', overflowY: 'auto' }}>
+                      {billSuccess.bill.items.map((it, idx) => (
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1px 0' }}>
+                          <span>{it.quantity}x {it.product_name}</span>
+                          <span style={{ fontWeight: 600 }}>₹{Number(it.total_price || (it.unit_price * it.quantity)).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
 
+              {/* Action Buttons Grid */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={() => printPOSInvoice({ bill: billSuccess.bill, shop, format: 'thermal' })}
                     className="btn btn-primary"
-                    style={{ fontWeight: 800, fontSize: '0.82rem', padding: '10px 8px' }}
+                    style={{ fontWeight: 800, fontSize: '0.84rem', padding: '12px 10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                   >
                     <Printer size={16} /> Thermal Print
                   </button>
@@ -838,45 +961,71 @@ export const POSScreen = () => {
                     type="button"
                     onClick={() => printPOSInvoice({ bill: billSuccess.bill, shop, format: 'standard' })}
                     className="btn btn-secondary"
-                    style={{ fontWeight: 800, fontSize: '0.82rem', padding: '10px 8px' }}
+                    style={{ fontWeight: 800, fontSize: '0.84rem', padding: '12px 10px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                   >
                     <FileText size={16} /> A4 Tax Invoice
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '8px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <button
                     type="button"
                     onClick={() => {
-                      const billAmt = billSuccess.bill?.total_amount ?? billSuccess.bill?.final_amount ?? total;
+                      const url = posApi.getReceiptUrl(billSuccess.bill?.bill_number);
+                      window.open(url, '_blank');
+                    }}
+                    className="btn btn-secondary"
+                    style={{ fontWeight: 800, fontSize: '0.82rem', padding: '10px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <Receipt size={16} /> View Server PDF
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const billAmt = billSuccess.bill?.total_amount ?? total;
                       const text = `🛒 *Tax Invoice - ${shop?.name || 'Store'}*\n📄 Bill No: ${billSuccess.bill?.bill_number}\n💰 Amount: ₹${Number(billAmt).toFixed(2)}\n💳 Payment: ${(billSuccess.bill?.payment_method || 'cash').toUpperCase()}\n🔗 Digital PDF: ${posApi.getReceiptUrl(billSuccess.bill?.bill_number)}`;
-                      const cleanPhone = (billSuccess.bill?.customer_phone || customerPhone || '').replace(/[^0-9]/g, '');
+                      const cleanPhone = (billSuccess.bill?.customer_phone || '').replace(/[^0-9]/g, '');
                       const whatsappUrl = cleanPhone.length >= 10
                         ? `https://wa.me/91${cleanPhone.slice(-10)}?text=${encodeURIComponent(text)}`
                         : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
                       window.open(whatsappUrl, '_blank');
                     }}
                     className="btn"
-                    style={{ background: '#25D366', color: '#ffffff', border: 'none', fontWeight: 800, fontSize: '0.82rem' }}
+                    style={{ background: '#25D366', color: '#ffffff', border: 'none', fontWeight: 800, fontSize: '0.82rem', padding: '10px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                   >
                     <MessageSquare size={16} /> WhatsApp Share
                   </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setBillSuccess(null);
-                      clearCart();
-                      setCustomerPhone('');
-                      setCustomerName('');
-                      setDiscountAmount(0);
-                    }}
-                    style={{ fontWeight: 700 }}
-                  >
-                    New Bill (+)
-                  </button>
                 </div>
+
+                {/* Primary Next Action: Agla Grahak / Naya Bill */}
+                <button
+                  type="button"
+                  className="btn btn-success btn-lg btn-block"
+                  onClick={() => {
+                    setBillSuccess(null);
+                    clearCart();
+                    setCustomerPhone('');
+                    setCustomerName('');
+                    setDiscountAmount(0);
+                    if (setSelectedKhataCustomer) setSelectedKhataCustomer(null);
+                  }}
+                  style={{
+                    marginTop: '6px',
+                    fontWeight: 900,
+                    fontSize: '1rem',
+                    borderRadius: '14px',
+                    padding: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 14px rgba(22, 163, 74, 0.3)',
+                  }}
+                >
+                  <Plus size={20} />
+                  <span>Agla Grahak / Naya Bill (+)</span>
+                </button>
               </div>
             </div>
           </div>
