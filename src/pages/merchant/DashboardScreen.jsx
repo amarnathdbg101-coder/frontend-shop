@@ -260,11 +260,20 @@ export const DashboardScreen = () => {
 
     try {
       setCreatingShop(true);
-      await shopApi.createShop(newShop);
+      const res = await shopApi.createShop(newShop);
+      const createdShop = res?.shop || res?.data?.shop || res?.data || res;
+      const newToken = res?.access_token || res?.data?.access_token;
+      if (newToken) {
+        localStorage.setItem('shopsilo_token', newToken);
+      }
+      if (createdShop && typeof createdShop === 'object') {
+        updateShopState(createdShop);
+      }
+      updateUser({ role: 'shop' });
       await refreshShop();
     } catch (err) {
       setSetupError(
-        err?.response?.data?.message || 'Dukan banate waqt error aaya. Dobara try karein.'
+        err.message || 'Dukan banate waqt error aaya. Dobara try karein.'
       );
     } finally {
       setCreatingShop(false);
@@ -2053,3 +2062,4 @@ export const DashboardScreen = () => {
 };
 
 export default DashboardScreen;
+
