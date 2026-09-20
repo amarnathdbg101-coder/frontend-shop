@@ -1,3 +1,4 @@
+import { getCustomerStoreUrl } from '../../utils/storeUrl';
 /**
  * Dedicated User Profile & Account Management Screen
  * 
@@ -505,7 +506,7 @@ export const ProfileScreen = () => {
               <span>Dukan Details Update Karein</span>
             </button>
             <a
-              href={`/shop/${shop.slug}`}
+              href={getCustomerStoreUrl(shop.slug)}
               target="_blank"
               rel="noreferrer"
               className="btn btn-secondary btn-sm"

@@ -1,3 +1,4 @@
+import { getCustomerStoreUrl } from '../../utils/storeUrl';
 import React, { useState } from 'react';
 import { X, Sparkles, MessageCircle, Copy, Check, Send } from 'lucide-react';
 import { aiApi } from '../../api/ai.api';
@@ -33,10 +34,20 @@ export const AIMarketingCampaignModal = ({ isOpen, onClose }) => {
         target_audience: 'Neighborhood Local Customers',
       });
       const resultText = res.campaign_text || res.message || res.text ||
-        `🎉 ${festivalName.toUpperCase()} DHAMAKA SALE at ${shop?.name || 'Local Store'}!\n\n🔥 Get flat ${discountPercent}% OFF on all grocery & essentials this week.\n📍 Store Address: ${shop?.address || 'Local Market'}\n📲 Order / Reserve now on ShopSilo: ${window.location.origin}/shop/${shop?.slug || 'store'}\n\nLimited stock. Visit today!`;
+        `🎉 ${festivalName.toUpperCase()} DHAMAKA SALE at ${shop?.name || 'Local Store'}!
+
+🔥 Get flat ${discountPercent}% OFF on all grocery & essentials this week.
+📍 Store Address: ${shop?.address || 'Local Market'}
+📲 Order / Reserve now on ShopSilo: ${getCustomerStoreUrl(shop?.slug || 'store')}
+
+Limited stock. Visit today!`;
       setGeneratedText(resultText);
     } catch (err) {
-      const fallback = `🎉 ${festivalName.toUpperCase()} DHAMAKA SALE at ${shop?.name || 'Local Store'}!\n\n🔥 Get flat ${discountPercent}% OFF on all items.\n📍 Address: ${shop?.address || 'Local Market'}\n📲 Reserve on ShopSilo: ${window.location.origin}/shop/${shop?.slug || 'store'}`;
+      const fallback = `🎉 ${festivalName.toUpperCase()} DHAMAKA SALE at ${shop?.name || 'Local Store'}!
+
+🔥 Get flat ${discountPercent}% OFF on all items.
+📍 Address: ${shop?.address || 'Local Market'}
+📲 Reserve on ShopSilo: ${getCustomerStoreUrl(shop?.slug || 'store')}`;
       setGeneratedText(fallback);
     } finally {
       setLoading(false);

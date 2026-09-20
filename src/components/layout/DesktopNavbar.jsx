@@ -1,3 +1,4 @@
+import { getCustomerStoreUrl } from '../../utils/storeUrl';
 /**
  * Merchant Desktop Top Navbar Component (Screens >= 1024px)
  * SaaS-grade retail management header with bilingual language switch & quick actions
@@ -155,7 +156,7 @@ export const DesktopNavbar = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '12px' }}>
                       {/* Customer Marketplace Direct Link */}
           <a
-            href="https://shopsilo.in"
+            href={getCustomerStoreUrl(shop?.slug || "")}
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-secondary btn-sm"

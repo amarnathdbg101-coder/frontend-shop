@@ -7,11 +7,15 @@ export const ShopQRModal = ({ isOpen, onClose, shop }) => {
   if (!isOpen || !shop) return null;
 
   const shopSlug = shop.slug || shop.id || 'store';
-  const shopUrl = `${window.location.origin}/shop/${shopSlug}`;
+  const shopUrl = getCustomerStoreUrl(shopSlug);
   const upiId = shop.upi_id || shop.upi || `${shopSlug}@upi`;
 
   const handleShareWhatsApp = () => {
-    const text = `🛒 *Order & Pickup from ${shop.name}*\n📍 Store: ${shop.address || 'Local Market'}\n🔗 Open Live Catalog & Offers: ${shopUrl}\n\nScan or tap the link to order directly!`;
+    const text = `🛒 *Order & Pickup from ${shop.name}*
+📍 Store: ${shop.address || 'Local Market'}
+🔗 Open Live Catalog & Offers: ${shopUrl}
+
+Scan or tap the link to order directly!`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 

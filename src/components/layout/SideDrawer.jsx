@@ -39,6 +39,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { getImageUrl } from '../../utils/imageUrl';
+import { getCustomerStoreUrl } from '../../utils/storeUrl';
 
 export const SideDrawer = ({ isOpen, onClose }) => {
   const { user, shop, isAuthenticated, logout } = useAuth();
@@ -124,7 +125,7 @@ export const SideDrawer = ({ isOpen, onClose }) => {
   const customerItems = [
     {
       label: 'Switch to Customer Mode',
-      path: shop?.slug ? `/shop/${shop.slug}` : 'https://shopsilo.in',
+      path: getCustomerStoreUrl(shop?.slug || ''),
       icon: ShoppingBag,
       color: '#2563eb',
       bg: 'rgba(37, 99, 235, 0.1)',
