@@ -32,7 +32,7 @@ import {
   UserCheck,
   X,
   RotateCcw,
-} from 'lucide-react';
+  MessageSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { usePOS } from '../../context/POSContext';
 import { productApi } from '../../api/product.api';
