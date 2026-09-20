@@ -1,125 +1,170 @@
-﻿/**
- * Authentication Context
+/**
+ * Merchant Authentication Context
  * 
- * Hinglish Hint:
- * Yeh pure app me user ke login status, JWT token aur uski dukan (shop)
- * ki details ko track karta hai.
- * Kisi bhi screen me useAuth() call karke pata chal jata hai ki user login hai ya nahi.
+ * Features:
+ * 1. Synchronous instant local storage hydration (zero flicker on page load / refresh).
+ * 2. Cross-tab session sync with window storage events.
+ * 3. Silent background profile & shop verification.
+ * 4. Resilient login, registration, and clean logout.
  */
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/auth.api';
 import { shopApi } from '../api/shop.api';
 
 const AuthContext = createContext(null);
 
+const getStoredToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('shopsilo_token') || localStorage.getItem('shopme_token') || null;
+};
+
+const getStoredUser = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem('shopsilo_user') || localStorage.getItem('shopme_user');
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+};
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(getStoredToken);
+  const [user, setUser] = useState(getStoredUser);
   const [shop, setShop] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('shopsilo_token') || localStorage.getItem('shopme_token') || null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Initial state is instantly hydrated from storage
 
-  // App shuru hote hi saved session check karna
-  useEffect(() => {
-    const savedUser = localStorage.getItem('shopsilo_user') || localStorage.getItem('shopme_user');
-    if (savedUser && token) {
-      try {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
-        // Agar user dukaandar hai, toh uski shop fetch kar lo
-        if (parsedUser.role === 'shop' || parsedUser.role === 'admin') {
-          fetchShopDetails();
-        }
-      } catch (e) {
-        console.error('Session restore failed:', e);
-        logout();
-      }
-    }
-    setLoading(false);
-  }, [token]);
-
-  // Merchant ki dukan ki details load karna
-  const fetchShopDetails = async () => {
+  // Fetch shop details for merchant
+  const fetchShopDetails = useCallback(async () => {
     try {
       const shopData = await shopApi.getMyShop();
       setShop(shopData);
-    } catch (err) {
-      // Ho sakta hai user ne abhi shop register na ki ho
+    } catch {
       setShop(null);
     }
-  };
+  }, []);
+
+  // Logout handler
+  const logout = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    setShop(null);
+    localStorage.removeItem('shopsilo_token');
+    localStorage.removeItem('shopme_token');
+    localStorage.removeItem('shopsilo_user');
+    localStorage.removeItem('shopme_user');
+  }, []);
+
+  // Synchronize auth state across browser tabs & listen for 401 expiry events
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'shopsilo_token' || e.key === 'shopsilo_user') {
+        setToken(getStoredToken());
+        setUser(getStoredUser());
+      }
+    };
+
+    const handleAuthExpired = () => {
+      logout();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('shopsilo:auth_expired', handleAuthExpired);
+
+    // Initial shop fetch for active merchant
+    const activeToken = getStoredToken();
+    const activeUser = getStoredUser();
+    if (activeToken && activeUser) {
+      if (activeUser.role === 'shop' || activeUser.role === 'admin' || activeUser.role === 'merchant') {
+        fetchShopDetails();
+      }
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('shopsilo:auth_expired', handleAuthExpired);
+    };
+  }, [logout, fetchShopDetails]);
 
   // Login handler
   const login = async (email, password) => {
-    const res = await authApi.login(email, password);
-    // res: { access_token, user }
-    setToken(res.access_token);
-    setUser(res.user);
-    localStorage.setItem('shopsilo_token', res.access_token);
-    localStorage.setItem('shopsilo_user', JSON.stringify(res.user));
+    setLoading(true);
+    try {
+      const res = await authApi.login(email, password);
+      const accessToken = res.access_token || res.data?.access_token;
+      const userData = res.user || res.data?.user;
 
-    if (res.user?.role === 'shop' || res.user?.role === 'admin') {
-      try {
-        const shopData = await shopApi.getMyShop();
-        setShop(shopData);
-      } catch (e) {
-        setShop(null);
+      if (accessToken && userData) {
+        setToken(accessToken);
+        setUser(userData);
+        localStorage.setItem('shopsilo_token', accessToken);
+        localStorage.setItem('shopsilo_user', JSON.stringify(userData));
+
+        if (userData.role === 'shop' || userData.role === 'admin' || userData.role === 'merchant') {
+          fetchShopDetails();
+        }
       }
+      return res;
+    } finally {
+      setLoading(false);
     }
-    return res;
   };
 
   // Google Login handler for Merchants
   const loginWithGoogle = async (idToken) => {
-    const res = await authApi.googleLogin(idToken, 'shop');
-    if (res.access_token) {
-      setToken(res.access_token);
-      setUser(res.user);
-      localStorage.setItem('shopsilo_token', res.access_token);
-      localStorage.setItem('shopsilo_user', JSON.stringify(res.user));
-      if (res.user?.role === 'shop' || res.user?.role === 'admin') {
-        try {
-          const shopData = await shopApi.getMyShop();
-          setShop(shopData);
-        } catch (e) {
-          setShop(null);
+    setLoading(true);
+    try {
+      const res = await authApi.googleLogin(idToken, 'shop');
+      const accessToken = res.access_token || res.data?.access_token;
+      const userData = res.user || res.data?.user;
+
+      if (accessToken && userData) {
+        setToken(accessToken);
+        setUser(userData);
+        localStorage.setItem('shopsilo_token', accessToken);
+        localStorage.setItem('shopsilo_user', JSON.stringify(userData));
+
+        if (userData.role === 'shop' || userData.role === 'admin' || userData.role === 'merchant') {
+          fetchShopDetails();
         }
       }
+      return res;
+    } finally {
+      setLoading(false);
     }
-    return res;
   };
 
   // Register handler
   const register = async (userData) => {
-    const res = await authApi.register(userData);
-    if (res.access_token) {
-      setToken(res.access_token);
-      setUser(res.user);
-      localStorage.setItem('shopsilo_token', res.access_token);
-      localStorage.setItem('shopsilo_user', JSON.stringify(res.user));
+    setLoading(true);
+    try {
+      const res = await authApi.register(userData);
+      const accessToken = res.access_token || res.data?.access_token;
+      const userObj = res.user || res.data?.user;
+
+      if (accessToken && userObj) {
+        setToken(accessToken);
+        setUser(userObj);
+        localStorage.setItem('shopsilo_token', accessToken);
+        localStorage.setItem('shopsilo_user', JSON.stringify(userObj));
+      }
+      return res;
+    } finally {
+      setLoading(false);
     }
-    return res;
   };
 
-  // Logout handler
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    setShop(null);
-    localStorage.removeItem('shopsilo_token'); localStorage.removeItem('shopme_token');
-    localStorage.removeItem('shopsilo_user'); localStorage.removeItem('shopme_user');
-  };
-
-  // Update local user state (e.g. new avatar)
+  // Update local user state
   const updateUser = (updatedFields) => {
     setUser((prev) => {
-      const updated = { ...prev, ...updatedFields };
+      const updated = { ...(prev || {}), ...updatedFields };
       localStorage.setItem('shopsilo_user', JSON.stringify(updated));
       return updated;
     });
   };
 
-  // Update local shop state (e.g. new logo or banners)
+  // Update local shop state
   const updateShopState = (updatedFields) => {
     setShop((prev) => (prev ? { ...prev, ...updatedFields } : updatedFields));
   };
@@ -132,7 +177,7 @@ export const AuthProvider = ({ children }) => {
         token,
         loading,
         isAuthenticated: !!token,
-        isMerchant: user?.role === 'shop' || user?.role === 'admin',
+        isMerchant: user?.role === 'shop' || user?.role === 'admin' || user?.role === 'merchant',
         login,
         loginWithGoogle,
         register,
@@ -147,7 +192,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Custom hook to use Auth easily
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
