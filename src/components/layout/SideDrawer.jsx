@@ -1,225 +1,306 @@
 /**
- * Shop Owner SideDrawer Component (Dukan OS Navigation)
+ * Merchant Side Navigation Drawer (Menu Bar)
  * 
- * Pixel-Perfect Match with Shopsilo Mobile OS Side Menu Drawer:
- * - Profile header with avatar, name, email/phone & role badge (SHOP OWNER)
- * - "Aapki Dukan (Tap for Settings)" live status card (Khuli Hai / Band)
- * - Section 1: MAIN BILLING & COUNTER (Dashboard, POS, Catalog, Khata)
- * - Section 2: CATALOG & PROMOTIONS (Add Product, Mandi List, Offers)
- * - Section 3: FINANCE & STORE TOOLS (Expenses, Profit Analytics, Settings, Pickups)
- * - Section 4: CUSTOMER STOREFRONT (Switch to Customer Mode)
- * - Section 5: APPEARANCE (Light, Dark, System 3-pill toggle)
- * - Footer: Merchant OS Hub Banner & Sign Out action
+ * Comprehensive, pixel-perfect sidebar menu for Mobile, Tablet, and Desktop:
+ * - Shop & Merchant Profile Header with Online/Offline status
+ * - Categorized feature groups:
+ *   1. Core Operations (Dashboard, POS Billing, Inventory, Khata)
+ *   2. Marketing & Growth (Offers & Deals, AI Campaigns)
+ *   3. Store Management (Procurement, Analytics, Expenses, Pickups, Staff)
+ *   4. Customer Storefront (Open Marketplace, Store QR Standee)
+ *   5. Preferences & Appearance (Light/Dark/System theme, Profile, Logout)
  */
 
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  X,
-  Home,
+  LayoutDashboard,
   Receipt,
-  Boxes,
+  Package,
   BookOpen,
-  PackagePlus,
-  ClipboardList,
   Tag,
-  IndianRupee,
   TrendingUp,
-  Settings,
-  PackageCheck,
-  ShoppingBag,
+  Wallet,
+  ShieldCheck,
+  ClipboardList,
+  Sparkles,
+  Users,
+  QrCode,
+  ExternalLink,
+  Store,
+  User,
+  LogOut,
+  X,
+  ChevronRight,
   Sun,
   Moon,
   Monitor,
-  Store,
-  LogOut,
-  ChevronRight,
+  Settings,
+  Flame,
+  Bot,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { StaffManagementModal } from '../merchant/StaffManagementModal';
+import { AIMarketingCampaignModal } from '../merchant/AIMarketingCampaignModal';
+import { ShopQRModal } from '../merchant/ShopQRModal';
+import { EditShopModal } from '../common/EditShopModal';
 import { getImageUrl } from '../../utils/imageUrl';
 import { getCustomerStoreUrl } from '../../utils/storeUrl';
 
 export const SideDrawer = ({ isOpen, onClose }) => {
-  const { user, shop, isAuthenticated, logout } = useAuth();
-  const { theme, setTheme } = useTheme();
-  const { isHindi } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, shop, logout, isAuthenticated } = useAuth();
+  const { theme, toggleTheme, setThemeMode } = useTheme();
+  const { isHindi } = useLanguage();
 
-  const [systemMode, setSystemMode] = useState(false);
+  // Modals state
+  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
+  const [isMarketingModalOpen, setIsMarketingModalOpen] = useState(false);
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+  const [isEditShopOpen, setIsEditShopOpen] = useState(false);
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) onClose();
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-  const handleLogout = () => {
-    if (window.confirm(isHindi ? 'Kya aap sign out karna chahte hain?' : 'Are you sure you want to sign out?')) {
-      logout();
-      onClose();
-      navigate('/login');
-    }
-  };
+  if (!isOpen) return null;
 
   const handleNavigate = (path) => {
     onClose();
-    if (path.startsWith('http')) {
-      window.open(path, '_blank');
-    } else {
-      navigate(path);
-    }
+    navigate(path);
   };
 
-  const handleThemeChange = (mode) => {
-    if (mode === 'system') {
-      setSystemMode(true);
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setTheme(prefersDark ? 'dark' : 'light');
-    } else {
-      setSystemMode(false);
-      setTheme(mode);
-    }
+  const handleLogout = async () => {
+    onClose();
+    await logout();
+    navigate('/login');
   };
 
-  const currentThemeMode = systemMode ? 'system' : theme === 'dark' ? 'dark' : 'light';
-
-  const isMerchant = user?.role === 'shop' || user?.role === 'admin' || !!shop;
-  const isAdmin = user?.role === 'admin';
-
-  // Navigation Data Groups
-  const billingItems = [
-    { label: 'Dashboard Overview', path: '/merchant', icon: Home, color: '#4f46e5', bg: 'rgba(79, 70, 229, 0.1)' },
-    { label: 'Fast POS Billing', path: '/merchant/pos', icon: Receipt, color: '#16a34a', bg: 'rgba(22, 163, 74, 0.1)' },
-    { label: 'Store Product List & Catalog', path: '/merchant/inventory', icon: Boxes, color: '#ea580c', bg: 'rgba(234, 88, 12, 0.1)' },
-    { label: 'Customer Khata Book', path: '/merchant/khata', icon: BookOpen, color: '#dc2626', bg: 'rgba(220, 38, 38, 0.1)' },
-  ];
-
-  const catalogItems = [
-    { label: 'Add New Product', path: '/merchant/inventory', icon: PackagePlus, color: '#059669', bg: 'rgba(5, 150, 105, 0.1)' },
-    { label: 'Mandi Khareed List', path: '/merchant/procurement-list', icon: ClipboardList, color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.1)' },
-    { label: 'Offers & Live Promotions', path: '/merchant/offers', icon: Tag, color: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' },
-  ];
-
-  const financeItems = [
-    { label: 'Daily Expenses (Kharcha)', path: '/merchant/expenses', icon: IndianRupee, color: '#d97706', bg: 'rgba(217, 119, 6, 0.1)' },
-    { label: 'Asli Munafa & Analytics', path: '/merchant/analytics', icon: TrendingUp, color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.1)' },
-    { label: 'Shop Profile & Settings', path: '/profile', icon: Settings, color: '#64748b', bg: 'rgba(100, 116, 139, 0.1)' },
-    { label: 'Counter Pickups Desk', path: '/merchant/pickups', icon: PackageCheck, color: '#0284c7', bg: 'rgba(2, 132, 199, 0.1)' },
-  ];
-
-  const customerItems = [
+  // Group 1: CORE OPERATIONS (Counter & Ledger)
+  const coreItems = [
     {
-      label: 'Switch to Customer Mode',
-      path: getCustomerStoreUrl(shop?.slug || ''),
-      icon: ShoppingBag,
-      color: '#2563eb',
-      bg: 'rgba(37, 99, 235, 0.1)',
+      label: isHindi ? 'डैशबोर्ड (होम)' : 'Dashboard (Home)',
+      path: '/merchant',
+      icon: LayoutDashboard,
+      color: '#4f46e5',
+      bg: '#eef2ff',
+      badge: 'Main',
+    },
+    {
+      label: isHindi ? 'काउंटर बिलिंग (POS)' : 'Counter Billing (POS)',
+      path: '/merchant/pos',
+      icon: Receipt,
+      color: '#059669',
+      bg: '#ecfdf5',
+      badge: 'Fast',
+    },
+    {
+      label: isHindi ? 'सामान व स्टॉक (Inventory)' : 'Catalog & Inventory',
+      path: '/merchant/inventory',
+      icon: Package,
+      color: '#d97706',
+      bg: '#fffbeb',
+      badge: 'Stock',
+    },
+    {
+      label: isHindi ? 'खाता बही (Udhar Khata)' : 'Khata Credit Ledger',
+      path: '/merchant/khata',
+      icon: BookOpen,
+      color: '#dc2626',
+      bg: '#fef2f2',
+      badge: 'Udhar',
     },
   ];
 
+  // Group 2: MARKETING & GROWTH
+  const marketingItems = [
+    {
+      label: isHindi ? 'ऑफ़र्स व डिस्काउंट (Offers)' : 'Offers & Coupons',
+      path: '/merchant/offers',
+      icon: Tag,
+      color: '#db2777',
+      bg: '#fdf2f8',
+      badge: 'Deals',
+    },
+    {
+      label: isHindi ? 'एआई मार्केटिंग कैंपेन (AI)' : 'AI Marketing Campaign',
+      action: () => {
+        onClose();
+        setIsMarketingModalOpen(true);
+      },
+      icon: Sparkles,
+      color: '#7c3aed',
+      bg: '#f5f3ff',
+      badge: 'AI Gen',
+    },
+  ];
+
+  // Group 3: STORE MANAGEMENT & LOGISTICS
+  const storeItems = [
+    {
+      label: isHindi ? 'मंडी खरीदारी लिस्ट' : 'Mandi Procurement List',
+      path: '/merchant/procurement',
+      icon: ClipboardList,
+      color: '#2563eb',
+      bg: '#eff6ff',
+      badge: 'Reorder',
+    },
+    {
+      label: isHindi ? 'मुनाफ़ा व बिक्री (Analytics)' : 'Profit & Sales Analytics',
+      path: '/merchant/analytics',
+      icon: TrendingUp,
+      color: '#10b981',
+      bg: '#ecfdf5',
+      badge: 'Reports',
+    },
+    {
+      label: isHindi ? 'दुकान खर्चे (Expenses)' : 'Store Expense Manager',
+      path: '/merchant/expenses',
+      icon: Wallet,
+      color: '#0891b2',
+      bg: '#ecfeff',
+      badge: 'Kharcha',
+    },
+    {
+      label: isHindi ? 'ऑनलाइन पिकअप सत्यापन' : 'Online Pickup Verify',
+      path: '/merchant/pickups',
+      icon: ShieldCheck,
+      color: '#4f46e5',
+      bg: '#eef2ff',
+      badge: 'Orders',
+    },
+    {
+      label: isHindi ? 'स्टाफ व कैशियर (Staff)' : 'Staff & Cashier Roles',
+      action: () => {
+        onClose();
+        setIsStaffModalOpen(true);
+      },
+      icon: Users,
+      color: '#6366f1',
+      bg: '#eef2ff',
+      badge: 'Team',
+    },
+  ];
+
+  // Group 4: CUSTOMER STOREFRONT & TOOLS
+  const customerItems = [
+    {
+      label: isHindi ? 'ग्राहक बाज़ार (Live Store)' : 'Open Customer Store',
+      action: () => {
+        onClose();
+        const url = getCustomerStoreUrl(shop?.slug || '');
+        window.open(url, '_blank', 'noopener,noreferrer');
+      },
+      icon: ExternalLink,
+      color: '#2563eb',
+      bg: '#eff6ff',
+      badge: 'Live',
+    },
+    {
+      label: isHindi ? 'काउंटर QR स्टैंडी (QR Code)' : 'Store Counter QR Standee',
+      action: () => {
+        onClose();
+        setIsQRModalOpen(true);
+      },
+      icon: QrCode,
+      color: '#059669',
+      bg: '#ecfdf5',
+      badge: 'Print',
+    },
+  ];
+
+  const currentThemeMode = theme || 'system';
+
+  const handleThemeChange = (mode) => {
+    if (setThemeMode) {
+      setThemeMode(mode);
+    } else {
+      toggleTheme();
+    }
+  };
+
   return (
     <>
-      {/* Backdrop */}
+      {/* Dark Blur Overlay Backdrop */}
       <div
-        className={`drawer-backdrop ${isOpen ? 'active' : ''}`}
-        onClick={onClose}
-        aria-hidden={!isOpen}
         style={{
           position: 'fixed',
           inset: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.5)',
-          backdropFilter: 'blur(3px)',
-          zIndex: 999,
-          opacity: isOpen ? 1 : 0,
-          visibility: isOpen ? 'visible' : 'hidden',
-          transition: 'opacity 0.22s ease, visibility 0.22s ease',
+          backgroundColor: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(5px)',
+          WebkitBackdropFilter: 'blur(5px)',
+          zIndex: 9998,
+          transition: 'opacity 0.2s ease',
         }}
+        onClick={onClose}
+        aria-hidden="true"
       />
 
-      {/* Side Drawer Body */}
+      {/* Modern Slide-out Drawer */}
       <aside
-        className={`side-drawer ${isOpen ? 'open' : ''}`}
         style={{
           position: 'fixed',
           top: 0,
           left: 0,
-          width: '82vw',
-          maxWidth: '320px',
-          height: '100vh',
+          bottom: 0,
+          width: '84vw',
+          maxWidth: '340px',
           backgroundColor: 'var(--bg-surface, #ffffff)',
-          borderRight: '1px solid var(--border-subtle, #e2e8f0)',
-          zIndex: 1000,
+          zIndex: 9999,
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '8px 0 32px rgba(0, 0, 0, 0.18)',
-          transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
-          transition: 'transform 0.24s cubic-bezier(0.16, 1, 0.3, 1)',
-          overflow: 'hidden',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+          animation: 'slideInLeft 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          borderRight: '1px solid var(--border-subtle, #e2e8f0)',
         }}
+        role="dialog"
+        aria-label="Merchant Navigation Menu"
       >
         {/* =========================================================================
-            1. DRAWER PROFILE HEADER
+            1. DRAWER TOP HEADER (Shop Branding & Profile)
            ========================================================================= */}
         <div
           style={{
-            padding: '16px 16px 14px 16px',
+            padding: '16px 18px',
+            backgroundColor: 'var(--bg-surface-subtle, #f8fafc)',
             borderBottom: '1px solid var(--border-subtle, #e2e8f0)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: 'var(--bg-surface, #ffffff)',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
-            {/* Avatar Image / Circle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
             <div
               style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '50%',
-                backgroundColor: 'var(--color-primary, #4f46e5)',
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
                 color: '#ffffff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: '1.1rem',
-                border: '1.5px solid #ea580c',
-                overflow: 'hidden',
+                fontWeight: 900,
+                fontSize: '1.05rem',
                 flexShrink: 0,
+                boxShadow: '0 4px 10px rgba(79, 70, 229, 0.25)',
+                overflow: 'hidden',
               }}
             >
               {user?.avatar_url ? (
                 <img
                   src={getImageUrl(user.avatar_url)}
-                  alt={user?.name || user?.full_name || 'User'}
+                  alt={user.name || user.full_name}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               ) : (
-                (user?.name || user?.full_name || shop?.name || 'U').charAt(0).toUpperCase()
+                shop?.name?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || 'S'
               )}
             </div>
 
-            {/* Name, Email & Role Badge */}
-            <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ minWidth: 0 }}>
               <div
                 style={{
-                  fontSize: '0.95rem',
+                  fontSize: '0.94rem',
                   fontWeight: 800,
                   color: 'var(--text-primary, #0f172a)',
                   whiteSpace: 'nowrap',
@@ -227,441 +308,168 @@ export const SideDrawer = ({ isOpen, onClose }) => {
                   textOverflow: 'ellipsis',
                 }}
               >
-                {shop?.name || user?.name || user?.full_name || 'Valued Shopkeeper'}
+                {shop ? shop.name : (user?.full_name || user?.name || (isHindi ? 'मेरी दुकान' : 'My Shop'))}
               </div>
-              <div
-                style={{
-                  fontSize: '0.74rem',
-                  color: 'var(--text-secondary, #64748b)',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  marginTop: '1px',
-                }}
-              >
-                {user?.email || user?.phone || 'omvastralaydbg@gmail.com'}
-              </div>
-
-              {/* Role Badge Pill */}
-              <div
-                style={{
-                  display: 'inline-block',
-                  backgroundColor: isAdmin ? '#fef3c7' : isMerchant ? '#e0e7ff' : '#dcfce7',
-                  color: isAdmin ? '#92400e' : isMerchant ? '#3730a3' : '#166534',
-                  fontSize: '0.62rem',
-                  fontWeight: 800,
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                  marginTop: '4px',
-                  letterSpacing: '0.4px',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {isAdmin ? 'SUPER-ADMIN' : isMerchant ? 'SHOP OWNER' : 'CUSTOMER'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                <span
+                  style={{
+                    width: '7px',
+                    height: '7px',
+                    borderRadius: '50%',
+                    backgroundColor: shop?.is_active ? '#10b981' : '#ef4444',
+                    display: 'inline-block',
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
+                    color: shop?.is_active ? '#059669' : '#dc2626',
+                  }}
+                >
+                  {shop?.is_active ? (isHindi ? 'Online Counter' : 'Online Store') : (isHindi ? 'Offline' : 'Offline')}
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Close Button */}
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close Drawer"
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'var(--text-secondary, #64748b)',
               cursor: 'pointer',
+              color: 'var(--text-secondary, #64748b)',
               padding: '6px',
               borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
             }}
+            aria-label="Close menu"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* =========================================================================
-            2. SCROLLABLE NAVIGATION LIST
+            2. SCROLLABLE CATEGORIZED NAVIGATION ITEMS
            ========================================================================= */}
-        <div
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '14px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px',
-          }}
-        >
-          {/* Shop Status Card if Merchant */}
-          {isMerchant && (
-            <div
-              onClick={() => handleNavigate('/profile')}
-              style={{
-                borderRadius: '12px',
-                border: '1px solid var(--border-subtle, #e2e8f0)',
-                padding: '12px',
-                marginBottom: '10px',
-                backgroundColor: 'var(--bg-surface, #ffffff)',
-                cursor: 'pointer',
-                transition: 'background 0.15s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--bg-surface, #ffffff)')}
-            >
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px 14px' }}>
+          {/* Helper Section Renderer */}
+          {[
+            { title: isHindi ? 'काउंटर व खाता (CORE)' : 'CORE OPERATIONS', items: coreItems },
+            { title: isHindi ? 'मार्केटिंग व ग्रोथ' : 'GROWTH & MARKETING', items: marketingItems },
+            { title: isHindi ? 'दुकान मैनेजमेंट व रिपोर्ट्स' : 'STORE MANAGEMENT', items: storeItems },
+            { title: isHindi ? 'कस्टमर स्टोरफ्रंट व क्यूआर' : 'CUSTOMER STOREFRONT', items: customerItems },
+          ].map((section, sIdx) => (
+            <div key={sIdx} style={{ marginBottom: '14px' }}>
               <div
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
+                  fontSize: '0.66rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.6px',
+                  color: 'var(--text-secondary, #64748b)',
+                  padding: '0 8px',
+                  marginBottom: '4px',
+                  textTransform: 'uppercase',
                 }}
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
-                    style={{
-                      fontSize: '0.62rem',
-                      fontWeight: 800,
-                      letterSpacing: '0.5px',
-                      color: 'var(--text-secondary, #64748b)',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    AAPKI DUKAN (TAP FOR SETTINGS)
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '0.96rem',
-                      fontWeight: 800,
-                      color: 'var(--text-primary, #0f172a)',
-                      marginTop: '2px',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {shop?.name || 'hmm'}
-                  </div>
-                </div>
-
-                {/* Status Badge */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '3px 8px',
-                    borderRadius: '12px',
-                    backgroundColor: shop?.is_active
-                      ? 'rgba(16, 185, 129, 0.12)'
-                      : 'rgba(239, 68, 68, 0.12)',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '3px',
-                      backgroundColor: shop?.is_active ? '#10b981' : '#ef4444',
-                    }}
-                  />
-                  <span
-                    style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      color: shop?.is_active ? '#047857' : '#b91c1c',
-                    }}
-                  >
-                    {shop?.is_active ? 'Khuli Hai' : 'Band'}
-                  </span>
-                </div>
+                {section.title}
               </div>
+
+              {section.items.map((item, iIdx) => {
+                const IconComp = item.icon;
+                const isActive = item.path && location.pathname === item.path;
+
+                return (
+                  <div
+                    key={iIdx}
+                    onClick={() => (item.action ? item.action() : handleNavigate(item.path))}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '8px 10px',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      backgroundColor: isActive ? 'var(--color-primary-light, #eef2ff)' : 'transparent',
+                      transition: 'all 0.15s ease',
+                      marginBottom: '2px',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!isActive) e.currentTarget.style.backgroundColor = 'var(--bg-surface-subtle, #f1f5f9)';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        backgroundColor: item.bg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <IconComp size={17} color={item.color} />
+                    </div>
+
+                    <span
+                      style={{
+                        fontSize: '0.82rem',
+                        fontWeight: isActive ? 800 : 600,
+                        color: isActive ? 'var(--color-primary, #4f46e5)' : 'var(--text-primary, #0f172a)',
+                        flex: 1,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}
+                    >
+                      {item.label}
+                    </span>
+
+                    {item.badge && (
+                      <span
+                        style={{
+                          fontSize: '0.64rem',
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: '6px',
+                          backgroundColor: isActive ? 'rgba(79, 70, 229, 0.15)' : 'var(--bg-surface-subtle, #f1f5f9)',
+                          color: isActive ? '#4f46e5' : 'var(--text-secondary, #64748b)',
+                        }}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+
+                    <ChevronRight size={15} color="var(--text-secondary, #94a3b8)" style={{ flexShrink: 0 }} />
+                  </div>
+                );
+              })}
             </div>
-          )}
+          ))}
 
-          {/* Group 1: MAIN BILLING & COUNTER */}
-          <div
-            style={{
-              fontSize: '0.62rem',
-              fontWeight: 800,
-              letterSpacing: '0.6px',
-              color: 'var(--text-secondary, #64748b)',
-              padding: '0 6px',
-              marginBottom: '2px',
-              textTransform: 'uppercase',
-            }}
-          >
-            MAIN BILLING & COUNTER
-          </div>
-
-          {billingItems.map((item, idx) => {
-            const IconComp = item.icon;
-            return (
-              <div
-                key={idx}
-                onClick={() => handleNavigate(item.path)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '9px 10px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  backgroundColor: 'transparent',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-              >
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    backgroundColor: item.bg,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <IconComp size={18} color={item.color} />
-                </div>
-                <span
-                  style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    color: 'var(--text-primary, #0f172a)',
-                    flex: 1,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {item.label}
-                </span>
-                <ChevronRight size={16} color="var(--text-secondary, #94a3b8)" style={{ flexShrink: 0 }} />
-              </div>
-            );
-          })}
-
-          {/* Group 2: CATALOG & PROMOTIONS */}
-          <div
-            style={{
-              fontSize: '0.62rem',
-              fontWeight: 800,
-              letterSpacing: '0.6px',
-              color: 'var(--text-secondary, #64748b)',
-              padding: '0 6px',
-              marginTop: '10px',
-              marginBottom: '2px',
-              textTransform: 'uppercase',
-            }}
-          >
-            CATALOG & PROMOTIONS
-          </div>
-
-          {catalogItems.map((item, idx) => {
-            const IconComp = item.icon;
-            return (
-              <div
-                key={idx}
-                onClick={() => handleNavigate(item.path)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '9px 10px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  backgroundColor: 'transparent',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-              >
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    backgroundColor: item.bg,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <IconComp size={18} color={item.color} />
-                </div>
-                <span
-                  style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    color: 'var(--text-primary, #0f172a)',
-                    flex: 1,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {item.label}
-                </span>
-                <ChevronRight size={16} color="var(--text-secondary, #94a3b8)" style={{ flexShrink: 0 }} />
-              </div>
-            );
-          })}
-
-          {/* Group 3: FINANCE & STORE TOOLS */}
-          <div
-            style={{
-              fontSize: '0.62rem',
-              fontWeight: 800,
-              letterSpacing: '0.6px',
-              color: 'var(--text-secondary, #64748b)',
-              padding: '0 6px',
-              marginTop: '10px',
-              marginBottom: '2px',
-              textTransform: 'uppercase',
-            }}
-          >
-            FINANCE & STORE TOOLS
-          </div>
-
-          {financeItems.map((item, idx) => {
-            const IconComp = item.icon;
-            return (
-              <div
-                key={idx}
-                onClick={() => handleNavigate(item.path)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '9px 10px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  backgroundColor: 'transparent',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-              >
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    backgroundColor: item.bg,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <IconComp size={18} color={item.color} />
-                </div>
-                <span
-                  style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    color: 'var(--text-primary, #0f172a)',
-                    flex: 1,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {item.label}
-                </span>
-                <ChevronRight size={16} color="var(--text-secondary, #94a3b8)" style={{ flexShrink: 0 }} />
-              </div>
-            );
-          })}
-
-          {/* Group 4: CUSTOMER STOREFRONT */}
-          <div
-            style={{
-              fontSize: '0.62rem',
-              fontWeight: 800,
-              letterSpacing: '0.6px',
-              color: 'var(--text-secondary, #64748b)',
-              padding: '0 6px',
-              marginTop: '10px',
-              marginBottom: '2px',
-              textTransform: 'uppercase',
-            }}
-          >
-            CUSTOMER STOREFRONT
-          </div>
-
-          {customerItems.map((item, idx) => {
-            const IconComp = item.icon;
-            return (
-              <div
-                key={idx}
-                onClick={() => handleNavigate(item.path)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '9px 10px',
-                  borderRadius: '10px',
-                  cursor: 'pointer',
-                  backgroundColor: 'transparent',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f1f5f9')}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-              >
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
-                    backgroundColor: item.bg,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  <IconComp size={18} color={item.color} />
-                </div>
-                <span
-                  style={{
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    color: 'var(--text-primary, #0f172a)',
-                    flex: 1,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {item.label}
-                </span>
-                <ChevronRight size={16} color="var(--text-secondary, #94a3b8)" style={{ flexShrink: 0 }} />
-              </div>
-            );
-          })}
-
-          {/* Group 5: APPEARANCE SELECTOR */}
-          <div style={{ marginTop: '14px', marginBottom: '8px' }}>
+          {/* Group 5: APPEARANCE MODE */}
+          <div style={{ marginTop: '8px', marginBottom: '10px' }}>
             <div
               style={{
-                fontSize: '0.68rem',
+                fontSize: '0.66rem',
                 fontWeight: 800,
                 letterSpacing: '0.6px',
                 color: 'var(--text-secondary, #64748b)',
-                padding: '0 6px',
+                padding: '0 8px',
                 marginBottom: '6px',
                 textTransform: 'uppercase',
               }}
             >
-              APPEARANCE
+              {isHindi ? 'थीम (APPEARANCE)' : 'APPEARANCE'}
             </div>
 
             <div
@@ -714,44 +522,44 @@ export const SideDrawer = ({ isOpen, onClose }) => {
         </div>
 
         {/* =========================================================================
-            3. DRAWER FOOTER ACTIONS
+            3. DRAWER FOOTER (Profile & Sign Out)
            ========================================================================= */}
         <div
           style={{
-            padding: '14px 16px 20px 16px',
+            padding: '14px 16px',
             borderTop: '1px solid var(--border-subtle, #e2e8f0)',
             backgroundColor: 'var(--bg-surface, #ffffff)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '10px',
+            gap: '8px',
           }}
         >
-          {/* Merchant OS Hub Box */}
-          <div
-            onClick={() => handleNavigate('/merchant')}
+          {/* Settings & Profile Button */}
+          <button
+            type="button"
+            onClick={() => handleNavigate('/profile')}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
-              padding: '10px 12px',
-              borderRadius: '12px',
-              backgroundColor: '#e0e7ff',
-              border: '1px solid #c7d2fe',
+              gap: '10px',
+              padding: '8px 10px',
+              borderRadius: '10px',
+              backgroundColor: 'var(--bg-surface-subtle, #f8fafc)',
+              border: '1px solid var(--border-subtle, #e2e8f0)',
+              color: 'var(--text-primary, #0f172a)',
               cursor: 'pointer',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              textAlign: 'left',
+              width: '100%',
             }}
           >
-            <Store size={20} color="#4338ca" style={{ flexShrink: 0 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#312e81' }}>
-                Merchant OS Hub
-              </div>
-              <div style={{ fontSize: '0.7rem', color: '#4338ca', marginTop: '1px' }}>
-                Counter POS, Khata & Sales
-              </div>
-            </div>
-          </div>
+            <Settings size={16} color="var(--color-primary, #4f46e5)" />
+            <span style={{ flex: 1 }}>{isHindi ? 'दुकान सेटिंग्स व प्रोफ़ाइल' : 'Store Settings & Profile'}</span>
+            <ChevronRight size={14} color="var(--text-secondary, #94a3b8)" />
+          </button>
 
-          {/* Sign Out Item */}
+          {/* Sign Out Button */}
           {isAuthenticated && (
             <button
               type="button"
@@ -759,23 +567,29 @@ export const SideDrawer = ({ isOpen, onClose }) => {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
-                padding: '6px 4px',
+                gap: '8px',
+                padding: '6px 8px',
                 background: 'transparent',
                 border: 'none',
                 color: '#dc2626',
                 cursor: 'pointer',
-                fontSize: '0.88rem',
+                fontSize: '0.82rem',
                 fontWeight: 700,
                 textAlign: 'left',
               }}
             >
-              <LogOut size={18} color="#dc2626" />
-              <span>Sign Out</span>
+              <LogOut size={16} color="#dc2626" />
+              <span>{isHindi ? 'लॉग आउट (Sign Out)' : 'Sign Out'}</span>
             </button>
           )}
         </div>
       </aside>
+
+      {/* Feature Modals */}
+      <StaffManagementModal isOpen={isStaffModalOpen} onClose={() => setIsStaffModalOpen(false)} />
+      <AIMarketingCampaignModal isOpen={isMarketingModalOpen} onClose={() => setIsMarketingModalOpen(false)} />
+      <ShopQRModal isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} />
+      <EditShopModal isOpen={isEditShopOpen} onClose={() => setIsEditShopOpen(false)} />
     </>
   );
 };

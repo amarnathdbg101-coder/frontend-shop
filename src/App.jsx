@@ -67,6 +67,23 @@ const ProtectedMerchantRoute = ({ children }) => {
   return children;
 };
 
+
+// Fast Redirection Component for Storefront QR scans on merchant domain
+const ShopRedirectScreen = () => {
+  React.useEffect(() => {
+    const path = window.location.pathname;
+    const cleanSlug = path.replace(/^\/(shop|shops)\//, '');
+    const targetUrl = `https://shopsilo.in/shop/${cleanSlug}`;
+    window.location.replace(targetUrl);
+  }, []);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '12px' }}>
+      <LoadingSpinner text="Redirecting to Customer Storefront..." />
+    </div>
+  );
+};
+
 function App() {
   return (
     <ErrorBoundary>
@@ -80,6 +97,9 @@ function App() {
                 <Suspense fallback={<LoadingSpinner text="Loading Merchant OS..." />}>
                   <Routes>
                     <Route path="/" element={<Navigate to="/merchant" replace />} />
+                    {/* Customer Storefront QR Scan Auto-Redirect */}
+                    <Route path="/shop/:slug" element={<ShopRedirectScreen />} />
+                    <Route path="/shops/:slug" element={<ShopRedirectScreen />} />
 
                     {/* Auth Routes */}
                     <Route path="/login" element={<LoginScreen />} />

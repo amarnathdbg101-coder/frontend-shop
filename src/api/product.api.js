@@ -62,18 +62,28 @@ export const productApi = {
   },
 
   // Merchant: Bulk Import Products via CSV File
-  bulkImportCSV: async (file) => {
+  bulkImportCSV: async (file, options = {}) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (options.updateExisting) {
+      formData.append('update_existing', 'true');
+    }
     const res = await client.post('/shops/me/products/bulk-import', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      params: options.updateExisting ? { update_existing: 'true' } : {},
     });
     return res.data;
   },
 
   // Merchant: Bulk Import Products via JSON items
-  bulkImportJSON: async (items) => {
-    const res = await client.post('/shops/me/products/bulk-import', items);
+  bulkImportJSON: async (items, options = {}) => {
+    const payload = {
+      items,
+      update_existing: options.updateExisting ?? true,
+    };
+    const res = await client.post('/shops/me/products/bulk-import', payload, {
+      params: options.updateExisting ? { update_existing: 'true' } : {},
+    });
     return res.data;
   },
 
