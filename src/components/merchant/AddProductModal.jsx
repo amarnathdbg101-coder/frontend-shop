@@ -173,7 +173,7 @@ export const AddProductModal = ({
     let count = 0;
     if (formData.name && formData.name.trim().length > 0) count++;
     if (formData.sku && formData.sku.trim().length > 0) count++;
-    if (formData.category_id && formData.category_id.length > 0) count++;
+    if (formData.category_id || (effectiveCategories && effectiveCategories.length > 0)) count++;
     if (formData.price && Number(formData.price) > 0) count++;
     return count;
   }, [formData.name, formData.sku, formData.category_id, formData.price]);
@@ -337,10 +337,7 @@ export const AddProductModal = ({
       setError('Kripya product ka naam darj karein');
       return;
     }
-    if (!formData.category_id) {
-      setError('Kripya ek category select karein');
-      return;
-    }
+    const safeCategoryId = formData.category_id || (effectiveCategories && effectiveCategories[0]?.id) || 'general-store';
     if (!formData.price || Number(formData.price) <= 0) {
       setError('Kripya valid Selling Price darj karein');
       return;
@@ -397,7 +394,7 @@ export const AddProductModal = ({
         floor_price: formData.floor_price ? Number(formData.floor_price) : 0,
         allow_bargain: Boolean(formData.allow_bargain),
         is_price_public: Boolean(formData.is_price_public),
-        category_id: formData.category_id,
+        category_id: safeCategoryId,
         stock_quantity: Number(formData.stock_quantity) || 0,
         min_stock: Math.max(1, Number(formData.min_stock) || 1),
         weight: formData.weight ? Number(formData.weight) : 0,
