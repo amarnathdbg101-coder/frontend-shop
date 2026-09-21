@@ -1,3 +1,4 @@
+import { ALL_CATEGORIES } from '../../constants/categoryData';
 import React, { useState, useEffect } from 'react';
 import { Search, Check, Layers, ChevronDown, X } from 'lucide-react';
 import { apiClient } from '../../api/client';

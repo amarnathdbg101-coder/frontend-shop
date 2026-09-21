@@ -1,3 +1,4 @@
+import { ALL_CATEGORIES } from '../../constants/categoryData';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   X,
@@ -34,6 +35,14 @@ export const AddProductModal = ({
   if (!isOpen) return null;
 
   const isEdit = Boolean(initialProduct?.id);
+  const effectiveCategories = React.useMemo(() => {
+    if (categories && effectiveCategories.length > 0) return categories;
+    return ALL_CATEGORIES.map((c) => ({
+      id: c.id,
+      name: `${c.icon} ${c.nameEn} / ${c.nameHi}`,
+      slug: c.slug,
+    }));
+  }, [categories]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -98,7 +107,7 @@ export const AddProductModal = ({
         floor_price: p.floor_price !== undefined ? String(p.floor_price) : '',
         allow_bargain: Boolean(p.allow_bargain),
         is_price_public: p.is_price_public !== undefined ? Boolean(p.is_price_public) : true,
-        category_id: p.category_id || p.category?.id || (categories[0]?.id || ''),
+        category_id: p.category_id || p.category?.id || (effectiveCategories[0]?.id || ''),
         stock_quantity: String(p.stock_quantity ?? p.inventory?.available_quantity ?? p.available_quantity ?? '20'),
         min_stock: String(p.min_stock ?? p.low_stock_threshold ?? '3'),
         weight: p.weight !== undefined ? String(p.weight) : '',
@@ -129,7 +138,7 @@ export const AddProductModal = ({
         floor_price: '',
         allow_bargain: false,
         is_price_public: true,
-        category_id: categories[0]?.id || '',
+        category_id: effectiveCategories[0]?.id || '',
         stock_quantity: '20',
         min_stock: '3',
         weight: '',
@@ -213,9 +222,9 @@ export const AddProductModal = ({
             setFormData((prev) => {
               // Match category if hinted
               let matchedCatId = prev.category_id;
-              if (result.category_hint && categories.length > 0) {
+              if (result.category_hint && effectiveCategories.length > 0) {
                 const hintLower = result.category_hint.toLowerCase();
-                const found = categories.find((c) =>
+                const found = effectiveCategories.find((c) =>
                   (c.name && c.name.toLowerCase().includes(hintLower)) ||
                   (c.slug && c.slug.toLowerCase().includes(hintLower))
                 );
@@ -829,7 +838,7 @@ export const AddProductModal = ({
                   fontWeight: 600,
                 }}
               >
-                {categories.length} categories available
+                {effectiveCategories.length} categories available
               </span>
             </div>
 
@@ -853,7 +862,7 @@ export const AddProductModal = ({
                 }}
               >
                 <option value="">Select a category</option>
-                {categories.map((cat) => (
+                {effectiveCategories.map((cat) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
                   </option>
