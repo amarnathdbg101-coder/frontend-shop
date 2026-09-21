@@ -35,12 +35,18 @@ export const AddProductModal = ({
   if (!isOpen) return null;
 
   const isEdit = Boolean(initialProduct?.id);
-  const effectiveCategories = React.useMemo(() => {
-    if (categories && effectiveCategories.length > 0) return categories;
+    const effectiveCategories = React.useMemo(() => {
+    if (Array.isArray(categories) && categories.length > 0) {
+      return categories.map((c) => ({
+        id: c.id || c.slug,
+        name: c.name || (c.nameEn ? `${c.icon || ''} ${c.nameEn} / ${c.nameHi || ''}`.trim() : c.slug),
+        slug: c.slug || c.id,
+      }));
+    }
     return ALL_CATEGORIES.map((c) => ({
-      id: c.id,
+      id: c.slug || c.id,
       name: `${c.icon} ${c.nameEn} / ${c.nameHi}`,
-      slug: c.slug,
+      slug: c.slug || c.id,
     }));
   }, [categories]);
 

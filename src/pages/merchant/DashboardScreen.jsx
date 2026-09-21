@@ -1732,7 +1732,7 @@ export const DashboardScreen = () => {
 
           {/* Tool 3: Add New Product */}
           <div
-            onClick={() => navigate('/merchant/inventory')}
+            onClick={() => navigate('/merchant/inventory?action=add')}
             style={{
               backgroundColor: 'var(--bg-surface, #ffffff)',
               borderRadius: '14px',

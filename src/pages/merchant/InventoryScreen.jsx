@@ -10,6 +10,7 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Package,
   AlertTriangle,
@@ -40,6 +41,7 @@ import { SkeletonRow } from '../../components/ui/Skeleton';
 
 export const InventoryScreen = () => {
   const { shop } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [activeTab, setActiveTab] = useState('catalog'); // 'catalog' | 'low_stock'
   const [products, setProducts] = useState([]);
@@ -63,6 +65,17 @@ export const InventoryScreen = () => {
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'add') {
+      setShowAddProductModal(true);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('action');
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Universal Safe Stock Helper
   const getProductStock = (p) => {
